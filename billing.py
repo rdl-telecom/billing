@@ -79,6 +79,55 @@ def get_tariffs(service):
   db_disconnect(db)
   return result
 
+####################################################################################################################################################
+def get_active_sessions():
+  db = db_connect()
+  lines = db_query(db, 'select ords.id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
+                       'left join tariffs tar on tariff_id = tar.id '
+                       'where start_time is not null and state_id=0;', full=True
+                   )
+  result = {}
+#   pprint(lines)
+  if lines != []:
+    for ( order_id, start_time, session_time, duration, state_id ) in lines:
+      result[str(order_id)] = {
+        'start_time' : start_time,
+        'session_time' : session_time,
+        'duration' : duration,
+        'state' : state_id
+      }
+  db_disconnect(db)
+  return result
+
+def start_session(order_id):
+  db = db_connect()
+  db_query(db, 'update orders set stop_time=null, start_time=now(), '
+               'state_id=0 '
+               'where id=%d'%(order_id), fetch=False, commit=True
+          )
+  db_disconnect(db)
+
+def stop_session(order_id, by_user=False):
+  if by_user: state_id = 1
+  else: state_id = 2
+  db = db_connect()
+  db_query(db, 'update orders set stop_time = now(), '
+               'state_id = %d, '
+               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)),'
+               'start_time = null'
+               'where id=%d'%(state_id, order_id), fetch=False, commit=True
+          )
+  db_disconnect(db)
+
+def end_session(order_id):
+  db = db_connect()
+  db_query(db, 'update orders set stop_time=null, end_time=now(), state_id=3, '
+               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)) '
+               'start_time=null '
+               'where id=%d'%(order_id), fetch=False, commit=True
+          )
+  db_disconnect(db)
+
 #####
 def verify_user(usrname, passwd):
   db = db_connect()
@@ -137,7 +186,7 @@ def add_client_order(db, client_id, order_id):
 def get_client_by_phone(db, phone):
   res = db_query(db, 'select id from clients where phone = '
                      'case substr("%s",1,1) when "+" then "%s" '
-                     'when "8" then concat("+7",substr("%s",2)) '
+                     'when "7" then concat("+","%s") '
                      'else concat("+7","%s") end;'%(phone, phone, phone, phone), full=True)
   if res == []:
     return None
@@ -147,6 +196,7 @@ def add_client_phone(db, phone):
   return db_query(db, 'insert into clients set phone = '
                        'case substr("%s",1,1) when "+" then "%s" '
                        'when "8" then concat("+7",substr("%s",2)) '
+                       'when "7" then concat("+","%s") '
                        'else concat("+7","%s") end;'%(phone, phone, phone, phone), commit=True, fetch=False, lastrow=True)
 
 def find_code(db, code):
@@ -166,6 +216,10 @@ def add_client_info(db, cl_info):
 #   pprint(cl_info)
   db_query(db, 'insert into client_info (client_id, mac, ip, user_agent, lang) values (%d, "%s", "%s", "%s", "%s");'
             %(cl_info['client_id'], cl_info['mac'], cl_info['ip'], cl_info['user_agent'], cl_info['lang']), fetch=False, commit=True)
+
+def began(db, order_id):
+  [ res ] = db_query(db, 'select begin_time is not null from orders where id=%d'%(order_id))
+  return res == 1
 
 def started(db, order_id):
   [ res ] = db_query(db, 'select start_time is not null from orders where id=%d'%(order_id))
@@ -223,12 +277,14 @@ def update_client_info(db, client_info, logout):
                fetch=False, commit=True)
     query = 'update orders set '
     if not started(db, client_info['order_id']):
+      if not began(db, client_info['order_id']):
+        query += 'begin_time=now(), '
       query += 'start_time=now(), '
     query += 'state_id=0 where id=%d'%(client_info['order_id'])
     db_query(db, query, fetch=False, commit=True)
     add_device_counter(db, client_info['order_id'])
   elif started(db, client_info['order_id']):
-    db_query(db, 'update orders set state_id=1, stop_time=now() where id=%d;'%(client_info['order_id']), fetch=False, commit=True)
+    stop_session(order_id, by_user=True)
   return client_info
 
 #####
@@ -247,54 +303,6 @@ def update_order(payment_info):
     result = True
   db_disconnect(db)
   return result
-
-####################################################################################################################################################
-def get_active_sessions():
-  db = db_connect()
-  lines = db_query(db, 'select ords.id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
-                       'left join tariffs tar on tariff_id = tar.id '
-                       'where start_time and state_id=0 and sheduled=0;', full=True
-                   )
-  result = {}
-#   pprint(lines)
-  if lines != []:
-    for ( order_id, start_time, session_time, duration, state_id ) in lines:
-      result[str(order_id)] = {
-        'start_time' : start_time,
-        'session_time' : session_time,
-        'duration' : duration,
-        'state' : state_id
-      }
-  db_disconnect(db)
-  return result
-
-def start_session(order_id):
-  db = db_connect()
-  db_query(db, 'update orders set stop_time=null, '
-               'state_id=0, '
-               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)) '
-               'where id=%d'%(order_id), fetch=False, commit=True
-          )
-  db_disconnect(db)
-
-def stop_session(order_id, by_user=False):
-  if by_user: state_id = 1
-  else: state_id = 2
-  db = db_connect()
-  db_query(db, 'update orders set stop_time=now(), '
-               'state_id=%d, '
-               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)) '
-               'where id=%d'%(state_id, order_id), fetch=False, commit=True
-          )
-  db_disconnect(db)
-
-def end_session(order_id):
-  db = db_connect()
-  db_query(db, 'update orders set end_time=now(), state_id=3, '
-               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)) '
-               'where id=%d'%(order_id), fetch=False, commit=True
-          )
-  db_disconnect(db)
 
 ####################################################################################################################################################
 def get_phones_to_sms():
