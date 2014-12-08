@@ -91,7 +91,7 @@ def send_sms(phone, code, order_id):
     finally:
       tc_lock.release()
   if sent:
-    sms_sent(order_id)
+    sms_sent(order_id) # status = 2 - sms sent
 
 def key_handler(signum, frame):
 #   print '\nControl-C pressed.'
