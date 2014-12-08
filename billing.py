@@ -302,18 +302,12 @@ def get_phones_to_sms():
   result = db_query(db, 'select ords.id, cl.phone, ords.code from orders ords left join clients cl on cl.id = client_id '
                         'where sms_sent = 0 and code <> "" order by payment_time;', full=True
                    )
-#  result = db_query(db, 'select ords.id, '
-#                        'case substr(phone,1,1) when "+" then phone when "8" then concat("+7",substr(phone,2)) else concat("+",phone) end, '
-#                        'ords.code from orders ords left join clients cl on cl.id = client_id '
-#                        'where sms_sent = 0 and code <> "" order by payment_time;',
-#                     full=True)
-#select case substr(phone,1,1) when '+' then phone when '8' then concat('+7',substr(phone,2)) else concat('+',phone) end from clients;
   db_disconnect(db)
   return result
 
-def sms_sent(order_id):
+def sms_sent(order_id, status=2):
   db = db_connect()
-  db_query(db, 'update orders set sms_sent=1 where id=%d;'%(order_id), fetch=False, commit=True)
+  db_query(db, 'update orders set sms_sent=%d where id=%d;'%(status, order_id), fetch=False, commit=True)
   db_disconnect(db)
 
 ####################################################################################################################################################
