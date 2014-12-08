@@ -122,7 +122,7 @@ def stop_session(order_id, by_user=False):
 def end_session(order_id):
   db = db_connect()
   db_query(db, 'update orders set stop_time=null, end_time=now(), state_id=3, '
-               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)) '
+               'session_time = sec_to_time(unix_timestamp() - unix_timestamp(start_time) + time_to_sec(session_time)), '
                'start_time=null '
                'where id=%d'%(order_id), fetch=False, commit=True
           )
@@ -186,6 +186,7 @@ def add_client_order(db, client_id, order_id):
 def get_client_by_phone(db, phone):
   res = db_query(db, 'select id from clients where phone = '
                      'case substr("%s",1,1) when "+" then "%s" '
+                     'when "8" then concat("+7",substr("%s",2)) '
                      'when "7" then concat("+","%s") '
                      'else concat("+7","%s") end;'%(phone, phone, phone, phone), full=True)
   if res == []:
