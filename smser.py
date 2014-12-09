@@ -43,6 +43,7 @@ def send_sms(phone, code, order_id):
   sent = False
   sms_var = 0
   counter = 0
+  print ' --- ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '  sms to ' + phone + ' with text "' + text + '"'
 
   while not sent:
     try:
@@ -92,6 +93,9 @@ def send_sms(phone, code, order_id):
       tc_lock.release()
   if sent:
     sms_sent(order_id) # status = 2 - sms sent
+    print ' --- sms sent'
+  else:
+    print ' --- sms NOT sent'
 
 def key_handler(signum, frame):
 #   print '\nControl-C pressed.'

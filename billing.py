@@ -13,7 +13,7 @@ import datetime
 # local imports
 import settings
 
-# from pprint import pprint
+from pprint import pprint
 
 ################################
 #####  INTERNAL FUNCTIONS  #####
@@ -26,7 +26,7 @@ def url2json(url):
   return result
 
 def json_response(data, status=200):
-#   pprint(data)
+  pprint(data)
   response = jsonify(data)
   response.status_code = status
   return response
@@ -40,7 +40,7 @@ def db_disconnect(db):
 
 def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
   cursor = db.cursor()
-#   pprint(query)
+  pprint(query)
   cursor.execute(query)
   result = None
   if commit:
@@ -52,7 +52,7 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
       result = cursor.fetchone()
   if lastrow:
     result = cursor.lastrowid
-#   pprint(result)
+  pprint(result)
   cursor.close()
   return result
 
@@ -87,7 +87,7 @@ def get_active_sessions():
                        'where start_time is not null and state_id=0;', full=True
                    )
   result = {}
-#   pprint(lines)
+  pprint(lines)
   if lines != []:
     for ( order_id, start_time, session_time, duration, state_id ) in lines:
       result[str(order_id)] = {
@@ -156,8 +156,8 @@ def get_tariff(db, service, tariff):
 
 #####
 def add_device_counter(db, order_id):
-#   print 'add_device_counter'
-#   print order_id
+  print 'add_device_counter'
+  print order_id
   db_query(db, 'update orders set dev_count = dev_count + 1 where id=%d'%(order_id), fetch=False, commit=True)
 
 def check_order(db, payment_info):
@@ -188,7 +188,7 @@ def get_client_by_phone(db, phone):
                      'case substr("%s",1,1) when "+" then "%s" '
                      'when "8" then concat("+7",substr("%s",2)) '
                      'when "7" then concat("+","%s") '
-                     'else concat("+7","%s") end;'%(phone, phone, phone, phone), full=True)
+                     'else concat("+7","%s") end;'%(phone, phone, phone, phone, phone), full=True)
   if res == []:
     return None
   return res[0][0]
@@ -198,7 +198,7 @@ def add_client_phone(db, phone):
                        'case substr("%s",1,1) when "+" then "%s" '
                        'when "8" then concat("+7",substr("%s",2)) '
                        'when "7" then concat("+","%s") '
-                       'else concat("+7","%s") end;'%(phone, phone, phone, phone), commit=True, fetch=False, lastrow=True)
+                       'else concat("+7","%s") end;'%(phone, phone, phone, phone, phone), commit=True, fetch=False, lastrow=True)
 
 def find_code(db, code):
   res = db_query(db, 'select id, client_id, tariff_id from orders where code="%s" and payment_time<>null and end_time=null;'%(code))
@@ -213,8 +213,8 @@ def find_code(db, code):
   return result
 
 def add_client_info(db, cl_info):
-#   print 'add_client_info'
-#   pprint(cl_info)
+  print 'add_client_info'
+  pprint(cl_info)
   db_query(db, 'insert into client_info (client_id, mac, ip, user_agent, lang) values (%d, "%s", "%s", "%s", "%s");'
             %(cl_info['client_id'], cl_info['mac'], cl_info['ip'], cl_info['user_agent'], cl_info['lang']), fetch=False, commit=True)
 
@@ -229,8 +229,8 @@ def started(db, order_id):
 def get_client_info(db, r_json):
   # getting mac on r_json['IPAddress']
   # if mac is changed then it's new client
-#   pprint('get_client_info:')
-#   pprint(r_json)
+  pprint('get_client_info:')
+  pprint(r_json)
   ip_mac = '00:00:00:00:00:00'
   info_list = db_query(db,
                 'select ords.id, ords.client_id, ci.mac, ci.ip, ci.user_agent, ci.lang, ords.state_id from orders ords '
@@ -241,7 +241,7 @@ def get_client_info(db, r_json):
               )
   if not info_list:
     return None
-#   print 'passed'
+  print 'passed'
   flag = False
   [ order_id, client_id, mac, ip, user_agent, lang, state ] = info_list
   if state == 10:
@@ -266,7 +266,7 @@ def get_client_info(db, r_json):
 
 def update_client_info(db, client_info, logout):
   if not logout:
-#     pprint(client_info)
+    pprint(client_info)
     res = db_query(db, 'select id from client_info where client_id=%d and mac="%s" and user_agent="%s";'
                     %(client_info['client_id'], client_info['mac'], client_info['user_agent'])
                   )
@@ -292,7 +292,7 @@ def update_client_info(db, client_info, logout):
 def update_order(payment_info):
   db = db_connect()
   result = False
-#   pprint(payment_info)
+  pprint(payment_info)
   client_id = get_client_by_phone(db, payment_info['phone'])
   if not client_id:
     client_id = add_client_phone(db, payment_info['phone'])
@@ -343,8 +343,8 @@ def get_first_data(service, tariff):
 
 #####
 def get_session(request_json, update=False):
-#   pprint('get_session')
-#   pprint(request_json)
+  pprint('get_session')
+  pprint(request_json)
   result = {
     'Result' : False,
     'IPAddress' : '',
@@ -354,8 +354,8 @@ def get_session(request_json, update=False):
   db = db_connect()
   try:
     client_info = get_client_info(db, request_json)
-#     pprint('client_info = get_client_info:')
-#     pprint(client_info)
+    pprint('client_info = get_client_info:')
+    pprint(client_info)
     if client_info:
       result = {
         'Result' : True,
@@ -364,25 +364,25 @@ def get_session(request_json, update=False):
         'Logout' : client_info['state']
       }
       if client_info['changed']:
-#         print 'if update:'
+        print 'if update:'
         if update:
           update_client_info(db, client_info, False)
         else:
           result['Result'] = False
   except KeyError:
-#     print "KeyError"
+    print "KeyError"
     result = None
   db_disconnect(db)
   return result
 
 #####
 def parse_xml(xml):
-#   print 'parse_xml:'
+  print 'parse_xml:'
   try:
     uni_result = json.loads(xml2json.xml2json(io.StringIO(xml)).get_json())['unitellerresult']
   except:
     return None
-#   pprint(uni_result)
+  pprint(uni_result)
   order = uni_result['orders']['order']
   dt = datetime.datetime.strptime(order['date'], '%d.%m.%Y %H:%M:%S')
   order['date'] = dt.strftime('%Y-%m-%d %H:%M:%S')
