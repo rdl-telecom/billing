@@ -106,9 +106,9 @@ while True:
   items = get_phones_to_sms()
   for item in items:
     sms_queue.put(item)
+    sms_sent(item[0], status=1)  # 1 - sms scheduled to send
   if not sms_queue.empty() and threads_counter <= 4:
     [ order_id, phone, code ] = sms_queue.get()
-    sms_sent(order_id, status=1)  # 1 - sms scheduled to send
     tread = threading.Thread(target=send_sms, args=(phone, code, order_id))
     tread.daemon = True
     tread.start()
