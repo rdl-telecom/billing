@@ -40,7 +40,7 @@ def db_disconnect(db):
 
 def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
   cursor = db.cursor()
-  pprint(query)
+#  pprint(query)
   cursor.execute(query)
   result = None
   if commit:
@@ -52,7 +52,7 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
       result = cursor.fetchone()
   if lastrow:
     result = cursor.lastrowid
-  pprint(result)
+#  pprint(result)
   cursor.close()
   return result
 
@@ -246,6 +246,8 @@ def get_client_info(db, r_json):
   [ order_id, client_id, mac, ip, user_agent, lang, state ] = info_list
   if state == 10:
     state = 0
+  elif state == 3:
+    return None
   if ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or mac != ip_mac or lang != r_json['Lang']:
     ip = r_json['IPAddress']
     user_agent = r_json['UserAgent']

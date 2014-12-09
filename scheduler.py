@@ -5,9 +5,18 @@ from billing import get_active_sessions, start_session, stop_session, end_sessio
 #from pprint import pprint
 import datetime
 import time
+import signal
 #import sched
 
+
+def shutdown(signum, frame):
+  import sys
+  sys.exit(0)
+
+
 if __name__ == '__main__':
+  signal.signal(signal.SIGTERM, shutdown)
+  signal.signal(signal.SIGINT, shutdown)
   while True:
     # getting active sessions (with state 1 (RUNNING))
     sessions = get_active_sessions()

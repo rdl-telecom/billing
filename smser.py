@@ -17,7 +17,11 @@ import threading
 # from pprint import pprint
 import settings
 from time import sleep
+import datetime
 from billing import get_phones_to_sms, sms_sent
+
+def timer_echo():
+    print ' --- ' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 #############################
 
@@ -25,6 +29,8 @@ threads_counter = 0
 tc_lock = threading.Lock()
 
 sms_queue = Queue.Queue()
+
+timer = threading.Timer(1800, timer_echo)
 
 #############################
 def send_sms(phone, code, order_id):
@@ -39,7 +45,6 @@ def send_sms(phone, code, order_id):
     finally:
       tc_lock.release()
   text = (settings.sms_text%(code))
-#   pprint(text)
   sent = False
   sms_var = 0
   counter = 0
@@ -64,15 +69,13 @@ def send_sms(phone, code, order_id):
         esm_class = msg_type_flag,
         registered_delivery = True
       )
-#       pprint(read_pdu)
       msg_id = read_pdu.message_id
       status = read_pdu.status
       if status == 0 and msg_id:
         sent = True
       sent = True
     except Exception as e:
-#       print traceback.format_exc()
-#       print e
+      print e
       break
       if counter > 0: 
         break
@@ -81,7 +84,7 @@ def send_sms(phone, code, order_id):
         sms_var = 0
       else:
         sms_var = 1
-      sleep(5*(counter+1))
+      sleep(15*(counter+1))
       pass
   tc_updated = False
   while not tc_updated:
@@ -97,24 +100,29 @@ def send_sms(phone, code, order_id):
   else:
     print ' --- sms NOT sent'
 
-def key_handler(signum, frame):
-#   print '\nControl-C pressed.'
+def shutdown(signum, frame):
+  print 'Shutting down...'
   while threads_counter:
-#     print '  Waiting for threads (%d remained)'%threads_counter
+    print '  Waiting for threads (%d remained)'%threads_counter
     sleep(1)
+  print 'Stopped'
+  timer.cancel()
   sys.exit(0)
 
-signal.signal(signal.SIGINT,key_handler)
-
-while True:
-  items = get_phones_to_sms()
-  for item in items:
-    sms_queue.put(item)
-    sms_sent(item[0], status=1)  # 1 - sms scheduled to send
-  if not sms_queue.empty() and threads_counter <= 4:
-    [ order_id, phone, code ] = sms_queue.get()
-    tread = threading.Thread(target=send_sms, args=(phone, code, order_id))
-    tread.daemon = True
-    tread.start()
-  
-  sleep(3)
+if __name__ == '__main__':
+  signal.signal(signal.SIGTERM, shutdown)
+  signal.signal(signal.SIGINT, shutdown)
+  timer_echo()
+  print 'Started'
+  timer.start()
+  while True:
+      items = get_phones_to_sms()
+      for item in items:
+        sms_queue.put(item)
+        sms_sent(item[0], status=1)  # 1 - sms scheduled to send
+      if not sms_queue.empty() and threads_counter <= 4:
+        [ order_id, phone, code ] = sms_queue.get()
+        tread = threading.Thread(target=send_sms, args=(phone, code, order_id))
+        tread.daemon = True
+        tread.start()
+      sleep(3)
