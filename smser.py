@@ -86,6 +86,11 @@ def send_sms(phone, code, order_id):
         sms_var = 1
       sleep(15*(counter+1))
       pass
+  if sent:
+    sms_sent(order_id) # status = 2 - sms sent
+    print ' --- sms sent'
+  else:
+    print ' --- sms NOT sent'
   tc_updated = False
   while not tc_updated:
     tc_lock.acquire()
@@ -94,11 +99,6 @@ def send_sms(phone, code, order_id):
       tc_updated = True
     finally:
       tc_lock.release()
-  if sent:
-    sms_sent(order_id) # status = 2 - sms sent
-    print ' --- sms sent'
-  else:
-    print ' --- sms NOT sent'
 
 def shutdown(signum, frame):
   print 'Shutting down...'
