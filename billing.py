@@ -10,6 +10,7 @@ from xmlutils import xml2json
 from urlparse import urlparse, parse_qs
 import datetime
 from mac import get_mac
+from check import get_phone, match_code
 
 # local imports
 import settings
@@ -133,7 +134,6 @@ def end_session(order_id):
 def verify_user(usrname, passwd):
   db = db_connect()
   result = True
-  
   if not db_query(db, 'select id from users where user="%s" and passwd=password("%s");'%(usrname, passwd)):
     result = False
   db_disconnect(db)
@@ -184,7 +184,8 @@ def add_client_order(db, client_id, order_id):
                               )
   return client_order_id
 
-def get_client_by_phone(db, phone):
+def get_client_by_phone(db, ph):
+  phone = get_phone(ph)
   res = db_query(db, 'select id from clients where phone = '
                      'case substr("%s",1,1) when "+" then "%s" '
                      'when "8" then concat("+7",substr("%s",2)) '
@@ -194,7 +195,8 @@ def get_client_by_phone(db, phone):
     return None
   return res[0][0]
 
-def add_client_phone(db, phone):
+def add_client_phone(db, ph):
+  phone = get_phone(ph)
   return db_query(db, 'insert into clients set phone = '
                        'case substr("%s",1,1) when "+" then "%s" '
                        'when "8" then concat("+7",substr("%s",2)) '
@@ -216,8 +218,8 @@ def find_code(db, code):
 def add_client_info(db, cl_info):
   print 'add_client_info'
   pprint(cl_info)
-  db_query(db, 'insert into client_info (client_id, mac, ip, user_agent, lang) values (%d, "%s", "%s", "%s", "%s");'
-            %(cl_info['client_id'], cl_info['mac'], cl_info['ip'], cl_info['user_agent'], cl_info['lang']), fetch=False, commit=True)
+  db_query(db, 'insert into client_info (client_id, mac, ip, user_agent, lang, client_orders_id) values (%d, "%s", "%s", "%s", "%s", %d);'
+            %(cl_info['client_id'], cl_info['mac'], cl_info['ip'], cl_info['user_agent'], cl_info['lang'], cl_info['order_id']), fetch=False, commit=True)
 
 def began(db, order_id):
   [ res ] = db_query(db, 'select begin_time is not null from orders where id=%d'%(order_id))
@@ -232,11 +234,13 @@ def get_client_info(db, r_json):
   # if mac is changed then it's new client
   pprint('get_client_info:')
   pprint(r_json)
+  if not match_code(r_json['Code']):
+    return None
   ip_mac = get_mac(r_json['IPAddress'])
   print ip_mac
   info_list = db_query(db,
                 'select ords.id, ords.client_id, ci.mac, ci.ip, ci.user_agent, ci.lang, ords.state_id from orders ords '
-                'left join client_info ci on ords.client_id = ci.client_id '
+                'left join client_info ci on ords.client_id = ci.client_id and ords.id = ci.client_orders_id '
                 'left join client_orders co on ci.client_id = co.client_id and ords.id = co.order_id '
                 'where ords.code = "%s" order by ci.update_time desc limit 1;'
                 %(r_json['Code'])
@@ -271,14 +275,14 @@ def get_client_info(db, r_json):
 def update_client_info(db, client_info, logout):
   if not logout:
     pprint(client_info)
-    res = db_query(db, 'select id from client_info where client_id=%d and mac="%s" and user_agent="%s";'
-                    %(client_info['client_id'], client_info['mac'], client_info['user_agent'])
+    res = db_query(db, 'select id from client_info where client_id=%d and mac="%s" and user_agent="%s" and client_orders_id=%d;'
+                    %(client_info['client_id'], client_info['mac'], client_info['user_agent'], client_info['order_id'])
                   )
     if not res:
       add_client_info(db, client_info)
     else:
-      db_query(db, 'update client_info set ip="%s", lang="%s", update_time=now() where id=%d;'
-                %(client_info['ip'], client_info['lang'], res[0]),
+      db_query(db, 'update client_info set ip="%s", lang="%s", update_time=now(), client_orders_id=%d where id=%d;'
+                %(client_info['ip'], client_info['lang'], client_info['order_id'], res[0]),
                fetch=False, commit=True)
     query = 'update orders set '
     if not started(db, client_info['order_id']):
