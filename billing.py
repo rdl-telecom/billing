@@ -9,6 +9,7 @@ import io
 from xmlutils import xml2json
 from urlparse import urlparse, parse_qs
 import datetime
+from mac import get_mac
 
 # local imports
 import settings
@@ -40,7 +41,7 @@ def db_disconnect(db):
 
 def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
   cursor = db.cursor()
-#  pprint(query)
+  pprint(query)
   cursor.execute(query)
   result = None
   if commit:
@@ -52,7 +53,7 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
       result = cursor.fetchone()
   if lastrow:
     result = cursor.lastrowid
-#  pprint(result)
+  pprint(result)
   cursor.close()
   return result
 
@@ -231,7 +232,8 @@ def get_client_info(db, r_json):
   # if mac is changed then it's new client
   pprint('get_client_info:')
   pprint(r_json)
-  ip_mac = '00:00:00:00:00:00'
+  ip_mac = get_mac(r_json['IPAddress'])
+  print ip_mac
   info_list = db_query(db,
                 'select ords.id, ords.client_id, ci.mac, ci.ip, ci.user_agent, ci.lang, ords.state_id from orders ords '
                 'left join client_info ci on ords.client_id = ci.client_id '
