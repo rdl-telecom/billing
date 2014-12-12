@@ -30,16 +30,21 @@ def get_gateway(ip):
     return None
   address = ip_address(ip.decode('latin-1'))
   query = db_query
-  con = sqlite3.connect(db_path)
-  cur = con.cursor()
-  cur.execute(query)
-  res = cur.fetchall()
-  con.close()
+  res = None
+  try:
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute(query)
+    res = cur.fetchall()
+    con.close()
+  except:
+    pass
   gateway = None
-  for net, gw in res:
-    if address in ip_network(net).hosts():
-      gateway = gw
-      break
+  if res:
+    for net, gw in res:
+      if address in ip_network(net).hosts():
+        gateway = gw
+        break
   return gateway
 
 def snmp_get_mac(gw, ip):
