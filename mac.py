@@ -20,7 +20,7 @@ class Mac(OctetString):
 
 db_path = '/opt/modgud/3.0.0/etc/modgud/configuration.sqlite3'
 db_query = 'select network, ip from bundles left join ranges on bundles.id=ranges.bundle_id where ranges.id >= 10000;'
-snmp_oid_prefix = '1.3.6.1.2.1.3.1.1.2.13.1.'
+snmp_oid_prefix = [ '1.3.6.1.2.1.3.1.1.2.13.1.', '1.3.6.1.2.1.3.1.1.2.12.1.' ]
 snmp_command = '/usr/bin/snmpget'
 
 def get_gateway(ip):
@@ -45,24 +45,27 @@ def get_gateway(ip):
 def snmp_get_mac(gw, ip):
   print 'snmp_get_mac:'
   print gw + ' -- ' + ip
-  pprint( (snmp_oid_prefix + ip).encode('latin-1'))
   mac = None
-  try:
-    errorIndication, errorStatus, errorIndex, varBind = cmdgen.CommandGenerator().getCmd(
-              cmdgen.UsmUserData(snmp_user, snmp_password,
-                                 authProtocol=cmdgen.usmHMACMD5AuthProtocol,
-                                 privProtocol=cmdgen.usmDESPrivProtocol
-                                ),
-              cmdgen.UdpTransportTarget((gw, 161)),
-              mibvar.MibVariable((snmp_oid_prefix + ip).encode('latin-1'))
-    )
-    if not (errorIndication or errorStatus):
-      (var, val) = varBind[0]
-      mac = Mac(val).prettyPrint()
-  except Exception as e:
-    print 'snmp exception '
-    print e
-    pass
+  for prefix in snmp_oid_prefix:
+    pprint( (prefix + ip).encode('latin-1'))
+    try:
+      errorIndication, errorStatus, errorIndex, varBind = cmdgen.CommandGenerator().getCmd(
+                cmdgen.UsmUserData(snmp_user, snmp_password,
+                                   authProtocol=cmdgen.usmHMACMD5AuthProtocol,
+                                   privProtocol=cmdgen.usmDESPrivProtocol
+                                  ),
+                cmdgen.UdpTransportTarget((gw, 161)),
+                mibvar.MibVariable((prefix + ip).encode('latin-1'))
+      )
+      if not (errorIndication or errorStatus):
+        (var, val) = varBind[0]
+        mac = Mac(val).prettyPrint()
+      if mac:
+        break
+    except Exception as e:
+      print 'snmp exception '
+      print e
+      pass
   return mac
 
 def get_mac(ip):
