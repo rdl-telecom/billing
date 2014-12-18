@@ -6,15 +6,30 @@ sys.setdefaultencoding('utf-8')
 
 from flask import Flask, Response, jsonify, request
 import json
-from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs
+from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 
-# from pprint import pprint
+from pprint import pprint
 
 app = Flask(__name__)
 app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
 app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')]) 
 
+#####   /ShopID   #####
+@app.route('/ShopID', methods = [ 'GET' ])
+def api_shopid():
+  r_json = url2json(request.url)
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  try:
+    data = get_shopid_by_orderid(r_json['OrderID'])
+  except Exception as e:
+    print e
+    return json_response({}, status=400)
+  resp_status = 200
+  if data == {}:
+    resp_status = 400
+  return json_response(data, status=resp_status)
 
 #####  /GetTariffs  #####
 @app.route('/GetTariffs', methods = [ 'GET' ])
@@ -102,5 +117,7 @@ def api_auth():
 #####  APPLICATION  #####
 if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
-  app.run(debug=True,host='0.0.0.0',port=2910)
-#  app.run()
+#  app.run(debug=True,host='0.0.0.0',port=2910)
+#  app.run(debug=True,host='0.0.0.0',port=2910)
+#  app.run(debug=True, port=8000)
+  app.run()

@@ -97,6 +97,16 @@ def get_tariffs(service):
   db_disconnect(db)
   return result
 
+#####
+def get_shopid_by_orderid(order_id):
+  result = {}
+  db = db_connect()
+  res = db_query(db, 'select s.shop from orders o left join shops s on s.id = o.shop_id where o.order_id = "%s"'%(order_id))
+  if res:
+    [ result['ShopID'] ] = res
+  db_disconnect(db)
+  return result
+
 ####################################################################################################################################################
 def get_active_sessions():
   db = db_connect()
