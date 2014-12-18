@@ -6,6 +6,7 @@ from settings import snmp_user, snmp_password
 from pprint import pprint
 from pysnmp.entity.rfc3413.oneliner import cmdgen, mibvar
 from pysnmp.proto.rfc1902 import OctetString
+from check import check_ip
 
 from pprint import pprint
 
@@ -26,7 +27,7 @@ snmp_command = '/usr/bin/snmpget'
 def get_gateway(ip):
   print 'get_gateway:'
   print ip
-  if not ip:
+  if not ip or not check_ip(ip):
     return None
   address = ip_address(ip.decode('latin-1'))
   query = db_query

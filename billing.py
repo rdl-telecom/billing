@@ -11,6 +11,7 @@ from urlparse import urlparse, parse_qs
 import datetime
 from mac import get_mac
 from check import get_phone, match_code
+from scratch import gen_code
 
 # local imports
 import settings
@@ -57,6 +58,21 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
   pprint(result)
   cursor.close()
   return result
+
+#####
+def new_code():
+  db = db_connect()
+  generated = False
+  code = gen_code()
+  while not generated:
+    try:
+      db_query(db, 'insert into codes (key_value, used) values ("%s", 1);'%(code), commit=True, fetch=False)
+      generated = True
+    except:
+      code = gen_code()
+      pass
+  db_disconnect(db)
+  return code
 
 #####
 def get_services(db):
@@ -407,4 +423,9 @@ def parse_xml(xml):
     'status' : order['status'],
     'need_confirm' : order['need_confirm']
   }
+  if not match_code(result['approval_code']):
+    result['approval_code'] = new_code()
   return result
+
+if __name__ == '__main__':
+  print new_code()
