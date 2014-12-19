@@ -8,18 +8,18 @@ ip_re = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-
 
 def get_phone(string):
   res = re.sub(r'[\(\)\s-]', r'', string)
-  if not phone_re.match(res):
+  if not string or not phone_re.match(res):
     res = '0000000000'
   return res
 
 def match_code(string):
   res = False
-  if code_re.match(string):
+  if string and code_re.match(string):
     res = True
   return res
 
 def check_ip(string):
   res = False
-  if ip_re.match(string):
+  if string and ip_re.match(string):
     res = True
   return res

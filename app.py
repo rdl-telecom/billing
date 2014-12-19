@@ -77,7 +77,7 @@ def api_fullxml():
     return json_response({},status=401)
   payment = parse_xml(r_json['XML'])
   if payment:
-    if (payment['status'].upper() == 'AUTHORIZED' or payment['status'].upper() == 'PAID') and payment['response_code'].upper() == 'AS000':
+    if (payment['status'].upper() == 'AUTHORIZED' or payment['status'].upper() == 'PAID'):
       if update_order(payment):
 #        send SMS
         result = True
@@ -118,6 +118,6 @@ def api_auth():
 if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
 #  app.run(debug=True,host='0.0.0.0',port=2910)
-#  app.run(debug=True,host='0.0.0.0',port=2910)
+  app.run(debug=True,host='0.0.0.0',port=2910)
 #  app.run(debug=True, port=8000)
-  app.run()
+#  app.run()
