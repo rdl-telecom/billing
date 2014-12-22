@@ -333,12 +333,41 @@ def update_order(payment_info):
   if check_order(db, payment_info):
     client_order_id = add_client_order(db, client_id, payment_info['order_id'])
     db_query(db, 'update orders set billnumber="%s", client_id=%d, payment_time="%s", code="%s" where order_id="%s";'
-              %(payment_info['uni_billnumber'], client_id, payment_info['date'], payment_info['approval_code'], payment_info['order_id']),
+                 %(payment_info['uni_billnumber'], client_id, payment_info['date'], payment_info['approval_code'], payment_info['order_id']),
              commit=True, fetch=False)
     result = True
   db_disconnect(db)
   return result
 
+#####
+def is_scratch_code(db, code):
+  result = None
+  if match_code(code) and len(code) == 7:
+    res = db_query(db, 'select service, type, price from tariffs '
+                       'where id = (select tariff_id from codes where key_value="%s" and serial is not null and not used) '
+		       'and (select id from orders where code="%s") is null;'%(code, code)
+                  )
+    if res:
+      result = {
+        'service' : res[0],
+        'tariff' : res[1],
+        'sum' : res[3]
+      }
+  return result
+
+def scratch_set_used(db, code):
+  db_query(db, 'update codes set used = 1 where key_value="%s"', fetch=False, commit=True)
+
+def generate_scratch_payment(order_id, code):
+  result = {
+    'order_id' : order_id,
+    'date' : datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'approval_code' : code,
+    'phone' : '+00000000000',
+    'uni_billnumber' : '0',
+  }
+  return result 
+  
 ####################################################################################################################################################
 def get_phones_to_sms():
   db = db_connect()
@@ -386,6 +415,14 @@ def get_session(request_json, update=False):
     'Logout' : 0
   }
   db = db_connect()
+  tar = is_scratch_code(db, request_json['Code'])
+  if tar:
+    fd = get_first_data(tar['service'], tar['tariff'])
+    shop_id = fd['ShopID']
+    order_id = fd['OrderID']
+    sms_sent(order_id)
+    update_order(generate_scratch_payment(order_id, request_json['Code']))
+    scratch_set_used(request_json['Code'])
   try:
     client_info = get_client_info(db, request_json)
     pprint('client_info = get_client_info:')
