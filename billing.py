@@ -75,6 +75,16 @@ def new_code():
   return code
 
 #####
+def get_order_id(ord_id):
+  print 'get_order_id( ' + ord_id + ' )'
+  res = None
+  if type(ord_id) is str or type(ord_id) is unicode:
+    res = int(ord_id[8:])
+  if type(ord_id) is int:
+    res = ord_id
+  return res
+
+#####
 def get_services(db):
   result = db_query(db, 'select service from tariffs order by service group by service;', full=True)
   return result
@@ -351,17 +361,19 @@ def is_scratch_code(db, code):
       result = {
         'service' : res[0],
         'tariff' : res[1],
-        'sum' : res[3]
+        'sum' : res[2]
       }
   return result
 
 def scratch_set_used(db, code):
-  db_query(db, 'update codes set used = 1 where key_value="%s"', fetch=False, commit=True)
+  db_query(db, 'update codes set used = 1 where key_value="%s"'%(code), fetch=False, commit=True)
 
-def generate_scratch_payment(order_id, code):
+def generate_scratch_payment(shop_id, order_id, summ, code):
   result = {
+    'shop_id' : shop_id,
     'order_id' : order_id,
     'date' : datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'sum' : summ,
     'approval_code' : code,
     'phone' : '+00000000000',
     'uni_billnumber' : '0',
@@ -418,11 +430,10 @@ def get_session(request_json, update=False):
   tar = is_scratch_code(db, request_json['Code'])
   if tar:
     fd = get_first_data(tar['service'], tar['tariff'])
-    shop_id = fd['ShopID']
-    order_id = fd['OrderID']
+    order_id = get_order_id(fd['OrderID'])
     sms_sent(order_id)
-    update_order(generate_scratch_payment(order_id, request_json['Code']))
-    scratch_set_used(request_json['Code'])
+    update_order(generate_scratch_payment(fd['ShopID'], fd['OrderID'], fd['Sum'], request_json['Code']))
+    scratch_set_used(db, request_json['Code'])
   try:
     client_info = get_client_info(db, request_json)
     pprint('client_info = get_client_info:')
