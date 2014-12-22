@@ -7,6 +7,7 @@ import hashlib
 import binascii
 import string
 import array
+from settings import scratch_length
 
 def get_symbol(byte):
   symbols = '0123456789DFGJLNQSUVWZ'
@@ -22,7 +23,7 @@ def gen_code():
   code = ''
   counter = 0
   for byte in bytes(hashlib.md5(my_secret + str(t1) + randstr + str(t2)).digest()):
-    if len(code) == 7:
+    if len(code) == scratch_length:
       break
     if counter % 2:
       code += get_symbol(ord(byte)+ord(prev))
