@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 from flask import Flask, Response, jsonify, request
 import json
-from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid
+from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 
 from pprint import pprint
@@ -38,7 +38,12 @@ def api_gettariffs():
   if not user_ok(r_json):
     return json_response({},status=401)
   try:
-    data = get_tariffs(r_json['Service'])
+    if 'Service' in r_json:
+      data = get_tariffs(r_json['Service'])
+    elif 'FilmID' in r_json:
+      data = get_film_price(r_json['FilmID'])
+    else:
+      raise Exception
   except:
     return json_response({}, status=400)
   resp_status = 200
@@ -56,9 +61,12 @@ def api_orderid():
   try:
     code_of_service = r_json['CodeOfService']
     tariff = r_json['Tariff']
+    film_id = None
+    if 'FilmID' in r_json:
+      film_id = r_json['FilmID']
   except:
     return json_response({}, status=400)
-  data = get_first_data(code_of_service, tariff)
+  data = get_first_data(code_of_service, tariff, film_id)
   status = 200
   if data == None:
     status = 400
@@ -119,5 +127,5 @@ if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
 #  app.run(debug=True,host='0.0.0.0',port=2910)
 #  app.run(debug=True,host='0.0.0.0',port=2910)
-#  app.run(debug=True, port=8000)
-  app.run()
+  app.run(debug=True, port=8000)
+#  app.run()

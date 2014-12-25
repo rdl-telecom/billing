@@ -94,6 +94,7 @@ def get_tariffs(service):
   tariffs = db_query(db, 'select type, button_name, price, button_name_en, description, description_en from tariffs '
                          'where service="%s" order by price;'%(service.upper()), full=True
                     )
+  db_disconnect(db)
   result = {}
   for i in range(len(tariffs)):
     result[str(i)] = {
@@ -104,7 +105,24 @@ def get_tariffs(service):
       'Description' : tariffs[i][4],
       'Description_EN' : tariffs[i][5]
     }
+  return result
+
+def get_film_price(filmid):
+  db = db_connect()
+  [ name, price ] = db_query(db, 'select name, price from films where id=%s'%(filmid))
   db_disconnect(db)
+  result = {
+    '0' : {
+          'Button' : '%s руб/24 часа'%(price),
+          'Button_EN' : '%s rub/24 hours'%(price),
+          'Tariff' : 'FILM',
+          'Sum' : price,
+          'Description' : 'Стоимость доступа к фильму "%s" в течение 24 часов составляет %s рублей (включая НДС)'%(name, price),
+          'Description_EN' : 'The cost of access to "%s" film during 24 hours shall be %s rubles (VAT included)'%(name, price)
+        },
+    'URL' : settings.vidimax_base + '/#movie/' + filmid
+  }
+  pprint(result)
   return result
 
 #####
@@ -188,8 +206,13 @@ def get_shop_id(db):
   [ res ] = db_query(db, 'select id from shops where shop="%s";'%(settings.shop_id))
   return res
 
-def get_tariff(db, service, tariff):
-  return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(service.upper(), tariff.upper()))
+def get_tariff(db, service, tariff, film_id):
+  if not film_id:
+    return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(service.upper(), tariff.upper()))
+  elif tariff.upper() == 'FILM':
+    return db_query(db, 'select t.id, f.price from tariffs t left join films f on f.id = %s where service="%s" and type="%s";'
+                        %(film_id, 'VIDEOSVC', 'FILM')
+                   )
 
 #####
 def add_device_counter(db, order_id):
@@ -290,6 +313,14 @@ def get_client_info(db, r_json):
     state = 0
   elif state == 3:
     return None
+  if 'FilmID' in r_json: # FilmID checking
+    [ res ] = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
+    if not res: # so this order is not for this film
+      return None
+  else: # checking for not film
+    [ res ] = db_query(db, 'select id from orders where id = %d and client_films_id is null'%(order_id))
+    if not res: # so this order is for film not for internet
+      return None
   if ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or mac != ip_mac or lang != r_json['Lang']:
     ip = r_json['IPAddress']
     user_agent = r_json['UserAgent']
@@ -395,15 +426,21 @@ def sms_sent(order_id, status=2):
   db_disconnect(db)
 
 ####################################################################################################################################################
-def get_first_data(service, tariff):
-  def create_order(db, shop, tariff):
-    return db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop_id, tariff_id), fetch=False, commit=True, lastrow=True)
+def get_first_data(service, tariff, film_id=None):
+  def create_order(db, shop, tariff, film):
+    if not film:
+      result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
+    else:
+      result = db_query(db, 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
+                        %(shop, tariff, film), fetch=False, commit=True, lastrow=True
+                       )
+    return result
   db = db_connect()
-  tariff_id, tariff_sum = get_tariff(db, service, tariff)
+  tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id)
   shop_id = get_shop_id(db)
   if not (tariff_id and tariff_sum and shop_id):
     return None
-  order_num = create_order(db, shop_id, tariff_id)
+  order_num = create_order(db, shop_id, tariff_id, film_id)
   if not order_num:
     return None
   order_id = '%s%020d'%(service.upper(), order_num)
@@ -417,18 +454,47 @@ def get_first_data(service, tariff):
   return result
 
 #####
+def get_film_session(request_json):
+  pprint('get_film_session')
+  result = {
+    'Result' : False
+  }
+  mac = get_mac(request_json['IPAddress'])
+  db = db_connect()
+  try: # checking user code
+    [ res ] = db_query(db, 'select o.id from orders o cross join '
+                           '(select client_orders_id from client_info where mac = "%s" and ip = "%s" and user_agent = "%s") s on s.client_orders_id = o.id '
+                           'where client_films_id=%s and begin_time is not null and end_time is null;'
+                           %(mac, request_json['IPAddress'], request_json['UserAgent'], request_json['FilmID'])
+                      )
+    if res:
+      result['Result'] = True
+  except Exception as e:
+    print e
+    pass
+  db_disconnect(db)
+  return result
+
 def get_session(request_json, update=False):
   pprint('get_session')
   pprint(request_json)
+  is_film = False
+  if 'FilmID' in request_json:
+    is_film = True
+  if is_film and not update:
+    return get_film_session(request_json)
   result = {
     'Result' : False,
     'IPAddress' : '',
     'UserAgent' : '',
     'Logout' : 0
   }
+  if is_film:
+    result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+    print result['URL']
   db = db_connect()
   tar = is_scratch_code(db, request_json['Code'])
-  if tar:
+  if tar and not is_film: # i don't accept scratch card payment for films for a while
     fd = get_first_data(tar['service'], tar['tariff'])
     order_id = get_order_id(fd['OrderID'])
     sms_sent(order_id)
@@ -445,6 +511,9 @@ def get_session(request_json, update=False):
         'UserAgent' : client_info['user_agent'],
         'Logout' : client_info['state']
       }
+      if is_film:
+        result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+        print result['URL']
       if client_info['changed']:
         print 'if update:'
         if update:
@@ -486,4 +555,5 @@ def parse_xml(xml):
   return result
 
 if __name__ == '__main__':
-  print new_code()
+  #print new_code()
+  pprint(get_first_data('VIDEOSVC','FILM3'))
