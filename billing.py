@@ -321,7 +321,7 @@ def get_client_info(db, r_json):
     [ res ] = db_query(db, 'select id from orders where id = %d and client_films_id is null'%(order_id))
     if not res: # so this order is for film not for internet
       return None
-  if ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or mac != ip_mac or lang != r_json['Lang']:
+  if mac != ip_mac or ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or lang != r_json['Lang']:
     ip = r_json['IPAddress']
     user_agent = r_json['UserAgent']
     mac = ip_mac
@@ -462,11 +462,11 @@ def get_film_session(request_json):
   mac = get_mac(request_json['IPAddress'])
   db = db_connect()
   try: # checking user code
-    [ res ] = db_query(db, 'select o.id from orders o cross join '
-                           '(select client_orders_id from client_info where mac = "%s" and ip = "%s" and user_agent = "%s") s on s.client_orders_id = o.id '
-                           'where client_films_id=%s and begin_time is not null and end_time is null;'
-                           %(mac, request_json['IPAddress'], request_json['UserAgent'], request_json['FilmID'])
-                      )
+    res = db_query(db, 'select o.id from orders o cross join '
+                       '(select client_orders_id from client_info where mac = "%s" and ip = "%s" order by update_time desc limit 1) s on s.client_orders_id = o.id '
+                       'where client_films_id=%s and begin_time is not null and end_time is null;'
+                       %(mac, request_json['IPAddress'], request_json['FilmID'])
+                   )
     if res:
       result['Result'] = True
   except Exception as e:
@@ -512,7 +512,7 @@ def get_session(request_json, update=False):
         'Logout' : client_info['state']
       }
       if is_film:
-        result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
         print result['URL']
       if client_info['changed']:
         print 'if update:'
