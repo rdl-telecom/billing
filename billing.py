@@ -314,11 +314,11 @@ def get_client_info(db, r_json):
   elif state == 3:
     return None
   if 'FilmID' in r_json: # FilmID checking
-    [ res ] = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
+    res = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
     if not res: # so this order is not for this film
       return None
   else: # checking for not film
-    [ res ] = db_query(db, 'select id from orders where id = %d and client_films_id is null'%(order_id))
+    res = db_query(db, 'select id from orders where id = %d and client_films_id =0'%(order_id))
     if not res: # so this order is for film not for internet
       return None
   if mac != ip_mac or ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or lang != r_json['Lang']:
@@ -415,7 +415,8 @@ def generate_scratch_payment(shop_id, order_id, summ, code):
 def get_phones_to_sms():
   db = db_connect()
   result = db_query(db, 'select ords.id, cl.phone, ords.code from orders ords left join clients cl on cl.id = client_id '
-                        'where sms_sent = 0 and code <> "" order by payment_time;', full=True
+                        'where (sms_sent = 0 or (sms_sent = 1 and state_id = 10 and unix_timestamp(now()) - unix_timestamp(payment_time) between 900 and 3600)) '
+                        'and code <> "" order by payment_time;', full=True
                    )
   db_disconnect(db)
   return result

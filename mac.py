@@ -21,7 +21,7 @@ class Mac(OctetString):
 
 db_path = '/opt/modgud/3.0.0/etc/modgud/configuration.sqlite3'
 db_query = 'select network, ip from bundles left join ranges on bundles.id=ranges.bundle_id where ranges.id >= 10000;'
-snmp_oid_prefix = [ '1.3.6.1.2.1.3.1.1.2.13.1.', '1.3.6.1.2.1.3.1.1.2.12.1.' ]
+snmp_oid_prefix = [ '1.3.6.1.2.1.3.1.1.2.14.1.', '1.3.6.1.2.1.3.1.1.2.13.1.', '1.3.6.1.2.1.3.1.1.2.12.1.' ]
 snmp_command = '/usr/bin/snmpget'
 
 def get_gateway(ip):
@@ -82,3 +82,6 @@ def get_mac(ip):
     if m:
       mac = m
   return mac
+
+if __name__ == '__main__':
+  print get_mac('10.101.0.222')

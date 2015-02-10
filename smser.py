@@ -90,6 +90,7 @@ def send_sms(phone, code, order_id):
     sms_sent(order_id) # status = 2 - sms sent
     print ' --- sms sent'
   else:
+    sms_sent(order_id, status=0) # status = 0 - sms not sent
     print ' --- sms NOT sent'
   tc_updated = False
   while not tc_updated:
