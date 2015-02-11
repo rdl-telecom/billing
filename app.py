@@ -80,14 +80,15 @@ def api_fullxml():
   if request.headers['Content-Type'] != 'application/json':
     return json_response({}, status=400)
   r_json = request.get_json()
-#   pprint(r_json)
   if not user_ok(r_json):
     return json_response({},status=401)
   payment = parse_xml(r_json['XML'])
   if payment:
-    if (payment['status'].upper() == 'AUTHORIZED' or payment['status'].upper() == 'PAID'):
-      if update_order(payment):
-#        send SMS
+    if payment['type'] == 'uniteller':
+      if (payment['status'].upper() == 'AUTHORIZED' or payment['status'].upper() == 'PAID') and update_order(payment):
+        result = True
+    elif payment['type'] == 'platron':
+      if payment['status'] == '1' and update_order(payment):
         result = True
   data = {
     'Result' : result
@@ -126,6 +127,6 @@ def api_auth():
 if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
 #  app.run(debug=True,host='0.0.0.0',port=2910)
-  app.run(debug=True,host='0.0.0.0',port=2910)
+  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()

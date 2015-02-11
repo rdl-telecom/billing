@@ -531,26 +531,47 @@ def get_session(request_json, update=False):
 def parse_xml(xml):
   print 'parse_xml:'
   try:
-    uni_result = json.loads(xml2json.xml2json(io.StringIO(xml)).get_json())['unitellerresult']
+    xml = json.loads(xml2json.xml2json(io.StringIO(xml)).get_json())
   except:
     return None
-  pprint(uni_result)
-  order = uni_result['orders']['order']
-  dt = datetime.datetime.strptime(order['date'], '%d.%m.%Y %H:%M:%S')
-  order['date'] = dt.strftime('%Y-%m-%d %H:%M:%S')
-  result = {
-    'shop_id' : uni_result['request']['shop_id'],
-    'order_id' : order['ordernumber'],
-    'sum' : order['total'],
-    'date' : order['date'],
-    'response_code' : order['response_code'],
-    'description' : order['recommendation'],
-    'approval_code' : order['approvalcode'],
-    'phone' : order['phone'],
-    'uni_billnumber' : order['billnumber'],
-    'status' : order['status'],
-    'need_confirm' : order['need_confirm']
-  }
+  result = None
+  if 'unitellerresult' in xml:                # Uniteller
+    uni_result=xml['unitellerresult']
+    pprint(uni_result)
+    order = uni_result['orders']['order']
+    dt = datetime.datetime.strptime(order['date'], '%d.%m.%Y %H:%M:%S')
+    order['date'] = dt.strftime('%Y-%m-%d %H:%M:%S')
+    result = {
+      'type' : 'uniteller',
+      'shop_id' : uni_result['request']['shop_id'],
+      'order_id' : order['ordernumber'],
+      'sum' : order['total'],
+      'date' : order['date'],
+      'response_code' : order['response_code'],
+      'description' : order['recommendation'],
+      'approval_code' : order['approvalcode'],
+      'phone' : order['phone'],
+      'uni_billnumber' : order['billnumber'],
+      'status' : order['status'],
+      'need_confirm' : order['need_confirm']
+    }
+  elif 'request' in xml:                   # Platron
+    platron_res=xml['request']
+    pprint(platron_res)
+    result = {
+      'type' : 'platron',
+      'shop_id' : '00000000',
+      'order_id' : platron_res['pg_order_id'],
+      'sum' : platron_res['pg_ps_full_amount'],
+      'date' : platron_res['pg_payment_date'],
+      'phone' : platron_res['pg_user_phone'],
+      'uni_billnumber' : platron_res['pg_payment_id'],
+      'status' : platron_res['pg_result'],
+      'can_reject' : platron_res['pg_can_reject'],
+      'approval_code' : ''
+    }
+  else:
+    return None
   if not match_code(result['approval_code']):
     result['approval_code'] = new_code()
   return result
