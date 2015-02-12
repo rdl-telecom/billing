@@ -8,7 +8,7 @@ from flask import Flask, Response, jsonify, request
 import json
 from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
-from auth_icomera import auth_client
+from icomera_auth import auth_client
 
 from pprint import pprint
 
@@ -141,7 +141,7 @@ def api_allow():
 #####  APPLICATION  #####
 if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
-#  app.run(debug=True,host='0.0.0.0',port=2910)
-  app.run(debug=True,host='0.0.0.0',port=8000)
+  app.run(debug=True,host='0.0.0.0',port=2910)
+#  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()
