@@ -8,6 +8,7 @@ from flask import Flask, Response, jsonify, request
 import json
 from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
+from auth_icomera import auth_client
 
 from pprint import pprint
 
@@ -122,6 +123,20 @@ def api_auth():
     return json_response(res, status=200)
 ######################
 
+#####   /Allow   #####
+@app.route('/Allow', methods = [ 'POST' ])
+def api_allow():
+  if request.headers['Content-Type'] != 'application/json':
+    return json_response({}, status=400)
+  r_json = request.get_json()
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  res = auth_client(r_json['IcomeraIP'], r_json['ClientIP'], r_json['MAC'])
+  result = {
+    'Result' : res
+  }
+  return json_respose(result, status=200)
+######################
 
 #####  APPLICATION  #####
 if __name__ == '__main__':
