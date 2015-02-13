@@ -63,13 +63,12 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
 def new_code():
   db = db_connect()
   generated = False
-  code = gen_code()
   while not generated:
     try:
+      code = gen_code()
       db_query(db, 'insert into codes (key_value, used) values ("%s", 1);'%(code), commit=True, fetch=False)
       generated = True
     except:
-      code = gen_code()
       pass
   db_disconnect(db)
   return code
@@ -381,6 +380,12 @@ def update_order(payment_info):
   return result
 
 #####
+def is_vip_code(db, code):
+  result = False
+  if match_code(code) and db_query(db, 'select vip from codes where key_value="%s" and expires > now()'%(code)):
+    result = True
+  return result
+
 def is_scratch_code(db, code):
   result = None
   if match_code(code) and len(code) == settings.scratch_length:
@@ -494,6 +499,9 @@ def get_session(request_json, update=False):
     result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
     print result['URL']
   db = db_connect()
+  if is_vip_code(db, request_json['Code']):
+    result['Result'] = True
+    return result
   tar = is_scratch_code(db, request_json['Code'])
   if tar and not is_film: # i don't accept scratch card payment for films for a while
     fd = get_first_data(tar['service'], tar['tariff'])
