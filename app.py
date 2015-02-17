@@ -124,18 +124,21 @@ def api_auth():
 ######################
 
 #####   /Allow   #####
-@app.route('/Allow', methods = [ 'POST' ])
+@app.route('/Allow', methods = [ 'GET' ])
 def api_allow():
-  if request.headers['Content-Type'] != 'application/json':
+  r_json = url2json(request.url)
+  if not ('IP' in r_json):
     return json_response({}, status=400)
-  r_json = request.get_json()
   if not user_ok(r_json):
     return json_response({},status=401)
-  res = auth_client(r_json['IcomeraIP'], r_json['ClientIP'], r_json['MAC'])
+  mac = '00:00:00:00:00:00'
+  if 'MAC' in r_json:
+    mac = r_json['MAC']
+  res = auth_client(r_json['IP'], mac)
   result = {
     'Result' : res
   }
-  return json_respose(result, status=200)
+  return json_response(result, status=200)
 ######################
 
 #####  APPLICATION  #####
