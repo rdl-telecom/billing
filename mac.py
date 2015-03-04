@@ -7,7 +7,7 @@ from pprint import pprint
 from pysnmp.entity.rfc3413.oneliner import cmdgen, mibvar
 from pysnmp.proto.rfc1902 import OctetString
 from check import check_ip
-
+import paramiko
 from pprint import pprint
 
 class Mac(OctetString):
