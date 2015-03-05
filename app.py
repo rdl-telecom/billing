@@ -65,9 +65,12 @@ def api_orderid():
     film_id = None
     if 'FilmID' in r_json:
       film_id = r_json['FilmID']
+    payment_system = None
+    if 'Shop' in r_json:
+      payment_system = r_json['Shop'].upper()
   except:
     return json_response({}, status=400)
-  data = get_first_data(code_of_service, tariff, film_id)
+  data = get_first_data(code_of_service, tariff, film_id, payment_system)
   status = 200
   if data == None:
     status = 400
@@ -142,9 +145,9 @@ def api_allow():
 ######################
 
 #####  APPLICATION  #####
-if __name__ == '__main__':
+#if __name__ == '__main__':
 #  app.run(host='0.0.0.0', debug=True)
-  app.run(debug=True,host='0.0.0.0',port=2910)
+#  app.run(debug=True,host='0.0.0.0',port=2910)
 #  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()

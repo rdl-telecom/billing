@@ -201,9 +201,19 @@ def user_ok(request_json):
   return True
 
 #####
-def get_shop_id(db):
-  [ res ] = db_query(db, 'select id from shops where shop="%s";'%(settings.shop_id))
+def get_shop(payment_system=None):
+  res = settings.shop_id
+  if payment_system == 'PLATRON':
+    res = '00000000'
+  if payment_system == 'SCRATCH':
+    res = 'FFFFFFFF'
   return res
+
+def get_shop_id(db, payment_system=None):
+  shop = get_shop(payment_system)
+  [ res ] = db_query(db, 'select id from shops where shop="%s";'%(shop))
+  return res
+
 
 def get_tariff(db, service, tariff, film_id):
   if not film_id:
@@ -432,7 +442,7 @@ def sms_sent(order_id, status=2):
   db_disconnect(db)
 
 ####################################################################################################################################################
-def get_first_data(service, tariff, film_id=None):
+def get_first_data(service, tariff, film_id=None, payment_system=None):
   def create_order(db, shop, tariff, film):
     if not film:
       result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
@@ -443,7 +453,8 @@ def get_first_data(service, tariff, film_id=None):
     return result
   db = db_connect()
   tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id)
-  shop_id = get_shop_id(db)
+  shop = get_shop(payment_system)
+  shop_id = get_shop_id(db, payment_system)
   if not (tariff_id and tariff_sum and shop_id):
     return None
   order_num = create_order(db, shop_id, tariff_id, film_id)
@@ -453,7 +464,7 @@ def get_first_data(service, tariff, film_id=None):
   db_query(db, 'update orders set order_id="%s" where id=%d'%(order_id, order_num), fetch=False, commit=True)
   db_disconnect(db)
   result = {
-    'ShopID' : settings.shop_id,
+    'ShopID' : shop,
     'OrderID' : order_id,
     'Sum' : tariff_sum
   }
@@ -504,7 +515,7 @@ def get_session(request_json, update=False):
     return result
   tar = is_scratch_code(db, request_json['Code'])
   if tar and not is_film: # i don't accept scratch card payment for films for a while
-    fd = get_first_data(tar['service'], tar['tariff'])
+    fd = get_first_data(tar['service'], tar['tariff'], None, 'SCRATCH')
     order_id = get_order_id(fd['OrderID'])
     sms_sent(order_id)
     update_order(generate_scratch_payment(fd['ShopID'], fd['OrderID'], fd['Sum'], request_json['Code']))
@@ -586,4 +597,7 @@ def parse_xml(xml):
 
 if __name__ == '__main__':
   #print new_code()
-  pprint(get_first_data('VIDEOSVC','FILM3'))
+#  pprint(get_first_data('VIDEOSVC','FILM3'))
+  print get_shop(None)
+  print get_shop('SCRATCH')
+  print get_shop('PLATRON')
