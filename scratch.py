@@ -15,7 +15,7 @@ def get_symbol(byte):
 
 my_secret = 'WNpE1G982ylxlbdx3HoAiAigeigaRvkwruCgzZulUDxIbxKDEDkZtIWQlKNKzhm5wZYHdcDSf8awP5Hxa7crF1S929nYyxJ5joed23m9mTPiiuSNR13sz5hHgsoVZbL8'
 
-def gen_code():
+def gen_code(length=scratch_length):
   t1 = time.time()
   time.sleep(random.random())
   randstr = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(128))
@@ -23,7 +23,7 @@ def gen_code():
   code = ''
   counter = 0
   for byte in bytes(hashlib.md5(my_secret + str(t1) + randstr + str(t2)).digest()):
-    if len(code) == scratch_length:
+    if len(code) == length:
       break
     if counter % 2:
       code += get_symbol(ord(byte)+ord(prev))
@@ -32,4 +32,4 @@ def gen_code():
   return code
 
 if __name__ == '__main__':
-  print gen_code()
+  print gen_code(4)
