@@ -11,10 +11,23 @@ from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 from icomera_auth import auth_client
 
 from pprint import pprint
+import logging
+from settings import logs_dir
 
 app = Flask(__name__)
 app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
 app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')]) 
+
+#logging.basicConfig(level=logging.DEBUG,
+#                    format='%(asctime)s %(name)-20s %(levelname)-8s %(message)s',
+#					datefmt='%Y-%m-%d %H:%M:%S',
+#                    filename=logs_dir+'/app.log',
+#                    filemode='aw')
+#logger = logging.getLogger('billing.app')
+
+#log_handler = logging.FileHandler(logs_dir + '/app.debug.log')
+#app.logger.addHandler(log_handler)
+#app.logger.setLevel(logging.DEBUG)
 
 #####   /ShopID   #####
 @app.route('/ShopID', methods = [ 'GET' ])
@@ -87,16 +100,20 @@ def api_fullxml():
   if not user_ok(r_json):
     return json_response({},status=401)
   payment = parse_xml(r_json['XML'])
+#  f = open('/tmp/log.txt','w')
+#  f.write(payment)
+#  f.close()
+  data = {}
   if payment:
     if payment['type'] == 'uniteller':
       if (payment['status'].upper() == 'AUTHORIZED' or payment['status'].upper() == 'PAID') and update_order(payment):
         result = True
     elif payment['type'] == 'platron':
+      data['Signature'] = payment['sig']
+      data['Salt'] = payment['salt']
       if payment['status'] == '1' and update_order(payment):
         result = True
-  data = {
-    'Result' : result
-  }
+  data['Result'] = result
   return json_response(data)
 ######################
 
@@ -146,6 +163,7 @@ def api_allow():
 
 #####  APPLICATION  #####
 #if __name__ == '__main__':
+#  app.logger.debug('app started in standalone mode')
 #  app.run(host='0.0.0.0', debug=True)
 #  app.run(debug=True,host='0.0.0.0',port=2910)
 #  app.run(debug=True,host='0.0.0.0',port=8000)

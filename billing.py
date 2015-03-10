@@ -60,6 +60,15 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
   return result
 
 #####
+def get_code(order_id):
+  result = None
+  db = db_connect()
+  res = db_query(db, 'select code from orders where order_id="%s"'%(order_id))
+  db_disconnect(db)
+  if res:
+    [ result ] = res
+  return result
+
 def new_code():
   db = db_connect()
   generated = False
@@ -581,18 +590,22 @@ def parse_xml(xml):
       'type' : 'platron',
       'shop_id' : '00000000',
       'order_id' : platron_res['pg_order_id'],
-      'sum' : platron_res['pg_ps_full_amount'],
+      'sum' : platron_res['pg_amount'],
       'date' : platron_res['pg_payment_date'],
       'phone' : platron_res['pg_user_phone'],
       'uni_billnumber' : platron_res['pg_payment_id'],
       'status' : platron_res['pg_result'],
       'can_reject' : platron_res['pg_can_reject'],
-      'approval_code' : ''
+      'approval_code' : '',
+	  'salt' : platron_res['pg_salt'],
+	  'sig' : platron_res['pg_sig'],
     }
   else:
     return None
   if not match_code(result['approval_code']):
-    result['approval_code'] = new_code()
+    result['approval_code'] = get_code(result['order_id'])
+    if not result['approval_code']:
+      result['approval_code'] = new_code()
   return result
 
 if __name__ == '__main__':
@@ -601,3 +614,5 @@ if __name__ == '__main__':
   print get_shop(None)
   print get_shop('SCRATCH')
   print get_shop('PLATRON')
+  print get_code('INTERNET00000000000000006713')
+  print get_code('INTERNET00000000000000006714')
