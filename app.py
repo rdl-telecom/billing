@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 from flask import Flask, Response, jsonify, request
 import json
-from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price
+from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price, get_filmid_by_orderid
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 from icomera_auth import auth_client
 
@@ -161,11 +161,23 @@ def api_allow():
   return json_response(result, status=200)
 ######################
 
+#####  /GetFilmID  #####
+@app.route('/GetFilmID', methods = [ 'GET' ])
+def api_get_film_id():
+  r_json = url2json(request.url)
+  if not ('OrderID' in r_json):
+    return json_response({}, status=400)
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  result = get_filmid_by_orderid(r_json['OrderID'])
+  return json_response(result, status=200)
+
+########################
 #####  APPLICATION  #####
-#if __name__ == '__main__':
+if __name__ == '__main__':
 #  app.logger.debug('app started in standalone mode')
 #  app.run(host='0.0.0.0', debug=True)
-#  app.run(debug=True,host='0.0.0.0',port=2910)
+  app.run(debug=True,host='0.0.0.0',port=2910)
 #  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()

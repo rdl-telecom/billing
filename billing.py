@@ -133,13 +133,23 @@ def get_film_price(filmid):
   pprint(result)
   return result
 
+def get_filmid_by_orderid(order_id):
+  result = {}
+  if order_id[:8] == 'VIDEOSVC':
+    db = db_connect()
+    res = db_query(db, 'select client_films_id from orders where order_id="%s"'%(order_id))
+    if res:
+      result['FilmID'] = res[0]
+    db.close()
+  return result
+
 #####
 def get_shopid_by_orderid(order_id):
   result = {}
   db = db_connect()
   res = db_query(db, 'select s.shop from orders o left join shops s on s.id = o.shop_id where o.order_id = "%s"'%(order_id))
   if res:
-    [ result['ShopID'] ] = res
+    result['ShopID'] = res[0]
   db_disconnect(db)
   return result
 
@@ -266,8 +276,8 @@ def get_client_by_phone(db, ph):
   res = db_query(db, 'select id from clients where phone = '
                      'case substr("%s",1,1) when "+" then "%s" '
                      'when "8" then concat("+7",substr("%s",2)) '
-                     'when "7" then concat("+","%s") '
-                     'else concat("+7","%s") end;'%(phone, phone, phone, phone, phone), full=True)
+                     'when "9" then concat("+7","%s") '
+                     'else concat("+","%s") end;'%(phone, phone, phone, phone, phone), full=True)
   if res == []:
     return None
   return res[0][0]
@@ -277,8 +287,8 @@ def add_client_phone(db, ph):
   return db_query(db, 'insert into clients set phone = '
                        'case substr("%s",1,1) when "+" then "%s" '
                        'when "8" then concat("+7",substr("%s",2)) '
-                       'when "7" then concat("+","%s") '
-                       'else concat("+7","%s") end;'%(phone, phone, phone, phone, phone), commit=True, fetch=False, lastrow=True)
+                       'when "9" then concat("+7","%s") '
+                       'else concat("+","%s") end;'%(phone, phone, phone, phone, phone),  commit=True, fetch=False, lastrow=True)
 
 def find_code(db, code):
   res = db_query(db, 'select id, client_id, tariff_id from orders where code="%s" and payment_time<>null and end_time=null;'%(code))
@@ -389,10 +399,13 @@ def update_order(payment_info):
   client_id = get_client_by_phone(db, payment_info['phone'])
   if not client_id:
     client_id = add_client_phone(db, payment_info['phone'])
+  code = payment_info['approval_code']
+  if not code:
+    code = new_code()
   if check_order(db, payment_info):
     client_order_id = add_client_order(db, client_id, payment_info['order_id'])
     db_query(db, 'update orders set billnumber="%s", client_id=%d, payment_time="%s", code="%s" where order_id="%s";'
-                 %(payment_info['uni_billnumber'], client_id, payment_info['date'], payment_info['approval_code'], payment_info['order_id']),
+                 %(payment_info['uni_billnumber'], client_id, payment_info['date'], code, payment_info['order_id']),
              commit=True, fetch=False)
     result = True
   db_disconnect(db)
@@ -435,6 +448,14 @@ def generate_scratch_payment(shop_id, order_id, summ, code):
   }
   return result 
   
+def is_vip_client(db, ip, mac):
+  res = db_query(db, 'select now() between c.activated and c.expires from vip_clients v left join codes c on c.key_value = v.code where ip="%s" and mac="%s";'
+                         %(ip, mac))
+  return res != None
+
+def add_vip_client(db, code, ip, mac):
+  db_query(db, 'insert into vip_clients values (0, "%s", "%s", "%s", now());'%(code.upper(), ip, mac), fetch=False, commit=True)
+
 ####################################################################################################################################################
 def get_phones_to_sms():
   db = db_connect()
@@ -489,8 +510,8 @@ def get_film_session(request_json):
   db = db_connect()
   try: # checking user code
     res = db_query(db, 'select o.id from orders o cross join '
-                       '(select client_orders_id from client_info where mac = "%s" and ip = "%s" order by update_time desc limit 1) s on s.client_orders_id = o.id '
-                       'where client_films_id=%s and begin_time is not null and end_time is null;'
+                       '(select client_orders_id from client_info where mac = "%s" and ip = "%s" order by update_time desc) s on s.client_orders_id = o.id '
+                       'where client_films_id=%s and begin_time is not null and end_time is null limit 1;'
                        %(mac, request_json['IPAddress'], request_json['FilmID'])
                    )
     if res:
@@ -507,8 +528,6 @@ def get_session(request_json, update=False):
   is_film = False
   if 'FilmID' in request_json:
     is_film = True
-  if is_film and not update:
-    return get_film_session(request_json)
   result = {
     'Result' : False,
     'IPAddress' : '',
@@ -519,9 +538,22 @@ def get_session(request_json, update=False):
     result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
     print result['URL']
   db = db_connect()
-  if is_vip_code(db, request_json['Code']):
+  mac = get_mac(request_json['IPAddress'])
+  vip_client = is_vip_client(db, request_json['IPAddress'], mac)
+  if vip_client:
+    print "is vip client"
+    if is_film:
+      result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
     result['Result'] = True
     return result
+  if 'Code' in request_json:
+    if is_vip_code(db, request_json['Code']):
+      print "is vip code"
+      if not vip_client:
+        add_vip_client(db, request_json['Code'], request_json['IPAddress'], mac)
+      return result
+  if is_film and not update:
+    return get_film_session(request_json)
   tar = is_scratch_code(db, request_json['Code'])
   if tar and not is_film: # i don't accept scratch card payment for films for a while
     fd = get_first_data(tar['service'], tar['tariff'], None, 'SCRATCH')
@@ -604,8 +636,9 @@ def parse_xml(xml):
     return None
   if not match_code(result['approval_code']):
     result['approval_code'] = get_code(result['order_id'])
-    if not result['approval_code']:
-      result['approval_code'] = new_code()
+#    if not result['approval_code']:
+#      if result['type'] == 'platron' and result['status'] == 1:
+#      result['approval_code'] = new_code()
   return result
 
 if __name__ == '__main__':
