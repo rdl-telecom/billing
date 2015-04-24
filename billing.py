@@ -346,10 +346,10 @@ def get_client_info(db, r_json):
     if not res: # so this order is not for this film
       return None
   else: # checking for not film
-    res = db_query(db, 'select id from orders where id = %d and client_films_id =0'%(order_id))
+    res = db_query(db, 'select id from orders where id = %d and client_films_id = 0'%(order_id))
     if not res: # so this order is for film not for internet
       return None
-  if mac != ip_mac or ip != r_json['IPAddress'] or user_agent != r_json['UserAgent'] or lang != r_json['Lang']:
+  if mac != ip_mac or ip != r_json['IPAddress'] or user_agent != r_json['UserAgent']:
     ip = r_json['IPAddress']
     user_agent = r_json['UserAgent']
     mac = ip_mac
@@ -492,11 +492,19 @@ def get_first_data(service, tariff, film_id=None, payment_system=None):
     return None
   order_id = '%s%020d'%(service.upper(), order_num)
   db_query(db, 'update orders set order_id="%s" where id=%d'%(order_id, order_num), fetch=False, commit=True)
+  if not film_id:
+    [ desc, desc_en ] = db_query(db, 'select t.button_name, t.button_name_en from orders o left join tariffs t on t.id = o.tariff_id where o.id = %d;'%(order_num))
+  else: # is film
+    [ price ] = db_query(db, 'select price from films where id = %s;'%(film_id))
+    desc = '%s руб/24 часа'%(price)
+    desc_en = '%s rub/24 hours'%(price)
   db_disconnect(db)
   result = {
     'ShopID' : shop,
     'OrderID' : order_id,
-    'Sum' : tariff_sum
+    'Sum' : tariff_sum,
+    'Description' : desc,
+    'Description_EN' : desc_en
   }
   return result
 
