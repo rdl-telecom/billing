@@ -28,3 +28,15 @@ def update_order_id(db, film_id, order_id):
 def get_price(db, film_id):
   [ result ] = db_query(db, 'select price from vidimax where id={id}'.format(id=film_id))
   return result
+
+def get_subs_info(db, id):
+  result = {}
+  res = db_query(db, 'select film_id, type, name, price*100 from vidimax where id={id};'.format(id=id))
+  if res:
+    result = {
+      'id': res[0],
+      'type': res[1],
+      'name': res[2],
+      'price': res[3]
+    }
+  return result

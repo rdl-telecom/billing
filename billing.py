@@ -10,7 +10,7 @@ import datetime
 from mac import get_mac
 from check import get_phone, match_code
 from scratch import gen_code
-from vidimax import update_order_id, get_price
+from vidimax import update_order_id, get_price, get_subs_info
 from db import db_connect, db_disconnect, db_query
 # local imports
 import settings
@@ -131,7 +131,6 @@ def get_shopid_by_orderid(order_id):
 #####
 def verify_user(usrname, passwd):
   db = db_connect()
-  print usrname, passwd
   result = True
   if not db_query(db, 'select id from users where user="%s" and passwd=password("%s");'%(usrname, passwd)):
     result = False
@@ -515,6 +514,39 @@ def get_film_session(request_json):
   db_disconnect(db)
   return result
 
+def get_user_subscriptions(ip, ua):
+  def get_subs_list(db, client_id):
+    subs = []
+    res = db_query(db, 'select client_films_id from orders where client_id=%s and new_model=1 and state_id=0;'%(client_id), full=True)
+    if res:
+      for [ film_id ] in res:
+        subs_info = get_subs_info(db, film_id)
+        if subs_info not in subs:
+          subs.append(subs_info)
+    return subs
+    
+  pprint('get_user_subscriptions:')
+  pprint(ip)
+  pprint(ua)
+  result = {}
+  mac = get_mac(ip)
+  db = db_connect()
+  vip_client = is_vip_client(db, ip, mac)
+  if vip_client:
+    # vip client 
+    pass
+  client_ids = db_query(db, 'select client_id as id from client_info where ip="%s" and mac="%s" group by client_id'%(ip, mac), full=True)
+  if client_ids:
+    result['UserID'] = client_ids[0][0] # in every way
+    result['Subscriptions'] = []
+    if len(client_ids) > 1:
+      print "fucking fuck! this should not have happened but happened"
+    for client in client_ids:
+      result['Subscriptions'] += get_subs_list(db, client)
+  db_disconnect(db)
+  pprint(result)
+  return result
+
 def get_session(request_json, update=False):
   pprint('get_session')
   pprint(request_json)
@@ -556,8 +588,8 @@ def get_session(request_json, update=False):
     update_order(generate_scratch_payment(fd['ShopID'], fd['OrderID'], fd['Sum'], request_json['Code']))
     scratch_set_used(db, request_json['Code'])
   try:
-    client_info = get_client_info(db, request_json)
     pprint('client_info = get_client_info:')
+    client_info = get_client_info(db, request_json)
     pprint(client_info)
     if client_info:
       result = {

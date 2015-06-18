@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 from flask import Flask, Response, jsonify, request, redirect, url_for
 import json
-from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price, get_filmid_by_orderid
+from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price, get_filmid_by_orderid, get_user_subscriptions
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 from icomera_auth import auth_client
 from vidimax import check_sign, add_film_info
@@ -168,6 +168,21 @@ def api_auth():
       return json_response({} , status=400)
     return json_response(res, status=200)
 ######################
+
+##### /GetSubscriptions #####
+##### Without authorization
+@app.route('/GetSubscriptions', methods = [ 'POST' ])
+def api_get_subscriptions():
+  if request.headers['Content-Type'] != 'application/json':
+    return json_response({}, status=400)
+  r_json = request.get_json()
+  if 'IPAddress' not in r_json:
+    return json_response({}, status=400)
+  user_agent = ''
+  if 'UserAgent' in r_json:
+    user_agent = r_json['UserAgent']
+  result = get_user_subscriptions(r_json['IPAddress'], user_agent)
+  return json_response(result, status=200)
 
 #####   /Allow   #####
 @app.route('/Allow', methods = [ 'GET' ])
