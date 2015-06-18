@@ -223,7 +223,7 @@ def user_ok(request_json):
 def get_shop(payment_system=None):
   res = settings.shop_id
   if payment_system == 'PLATRON':
-    res = '00000000'
+    res = '00006866'
   if payment_system == 'SCRATCH':
     res = 'FFFFFFFF'
   return res
@@ -559,6 +559,7 @@ def get_session(request_json, update=False):
       print "is vip code"
       if not vip_client:
         add_vip_client(db, request_json['Code'], request_json['IPAddress'], mac)
+      result['Result'] = True
       return result
   if is_film and not update:
     return get_film_session(request_json)
@@ -628,7 +629,7 @@ def parse_xml(xml):
     pprint(platron_res)
     result = {
       'type' : 'platron',
-      'shop_id' : '00000000',
+      'shop_id' : '00006866',
       'order_id' : platron_res['pg_order_id'],
       'sum' : platron_res['pg_amount'],
       'date' : platron_res['pg_payment_date'],
