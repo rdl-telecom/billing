@@ -1,9 +1,7 @@
-#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 # from uuid import uuid4
 from flask import jsonify, Response
-import mysql.connector
 import json
 import io
 from xmlutils import xml2json
@@ -12,7 +10,8 @@ import datetime
 from mac import get_mac
 from check import get_phone, match_code
 from scratch import gen_code
-
+from vidimax import update_order_id, get_price
+from db import db_connect, db_disconnect, db_query
 # local imports
 import settings
 
@@ -33,31 +32,6 @@ def json_response(data, status=200):
   response = jsonify(data)
   response.status_code = status
   return response
-
-#####
-def db_connect():
-  return mysql.connector.Connect(host=settings.db_host, port=settings.db_port, user=settings.db_user, password=settings.db_password, database=settings.db_name)
-
-def db_disconnect(db):
-  return db.close()
-
-def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
-  cursor = db.cursor()
-  pprint(query)
-  cursor.execute(query)
-  result = None
-  if commit:
-    db.commit()
-  if fetch:
-    if full:
-      result = cursor.fetchall()
-    else:
-      result = cursor.fetchone()
-  if lastrow:
-    result = cursor.lastrowid
-  pprint(result)
-  cursor.close()
-  return result
 
 #####
 def get_code(order_id):
@@ -154,6 +128,25 @@ def get_shopid_by_orderid(order_id):
   return result
 
 ####################################################################################################################################################
+#####
+def verify_user(usrname, passwd):
+  db = db_connect()
+  print usrname, passwd
+  result = True
+  if not db_query(db, 'select id from users where user="%s" and passwd=password("%s");'%(usrname, passwd)):
+    result = False
+  db_disconnect(db)
+  return result
+
+def user_ok(request_json):
+  try:
+    if not verify_user(request_json['login'], request_json['password']):
+      raise ValueError
+  except:
+    return False
+  return True
+
+#####
 def get_active_sessions():
   db = db_connect()
   lines = db_query(db, 'select ords.id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
@@ -203,23 +196,6 @@ def end_session(order_id):
   db_disconnect(db)
 
 #####
-def verify_user(usrname, passwd):
-  db = db_connect()
-  result = True
-  if not db_query(db, 'select id from users where user="%s" and passwd=password("%s");'%(usrname, passwd)):
-    result = False
-  db_disconnect(db)
-  return result
-
-def user_ok(request_json):
-  try:
-    if not verify_user(request_json['login'], request_json['password']):
-      raise ValueError
-  except:
-    return False
-  return True
-
-#####
 def get_shop(payment_system=None):
   res = settings.shop_id
   if payment_system == 'PLATRON':
@@ -234,13 +210,14 @@ def get_shop_id(db, payment_system=None):
   return res
 
 
-def get_tariff(db, service, tariff, film_id):
+def get_tariff(db, service, tariff, film_id, new_model=False):
   if not film_id:
     return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(service.upper(), tariff.upper()))
   elif tariff.upper() == 'FILM':
-    return db_query(db, 'select t.id, f.price from tariffs t left join films f on f.id = %s where service="%s" and type="%s";'
-                        %(film_id, 'VIDEOSVC', 'FILM')
-                   )
+    query = 'select t.id, f.price from tariffs t left join films f on f.id = %s where service="%s" and type="%s";'
+    if new_model:
+      query = 'select id, (select price from vidimax where id=%s) from tariffs where service="%s" and type="%s";'
+    return db_query(db, query%(film_id, 'VIDEOSVC', 'FILM'))
 
 #####
 def add_device_counter(db, order_id):
@@ -472,17 +449,20 @@ def sms_sent(order_id, status=2):
   db_disconnect(db)
 
 ####################################################################################################################################################
-def get_first_data(service, tariff, film_id=None, payment_system=None):
+def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False):
   def create_order(db, shop, tariff, film):
     if not film:
       result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
     else:
-      result = db_query(db, 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
-                        %(shop, tariff, film), fetch=False, commit=True, lastrow=True
-                       )
+      query = 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
+      if new_model:
+        query = 'insert into orders (shop_id, tariff_id, client_films_id, new_model) values (%s, %s, %s, 1);'
+      result = db_query(db, query%(shop, tariff, film), fetch=False, commit=True, lastrow=True)
+      if new_model:
+        update_order_id(db, film, result)
     return result
   db = db_connect()
-  tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id)
+  tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id, new_model)
   shop = get_shop(payment_system)
   shop_id = get_shop_id(db, payment_system)
   if not (tariff_id and tariff_sum and shop_id):
@@ -495,9 +475,14 @@ def get_first_data(service, tariff, film_id=None, payment_system=None):
   if not film_id:
     [ desc, desc_en ] = db_query(db, 'select t.button_name, t.button_name_en from orders o left join tariffs t on t.id = o.tariff_id where o.id = %d;'%(order_num))
   else: # is film
-    [ price ] = db_query(db, 'select price from films where id = %s;'%(film_id))
-    desc = '%s руб/24 часа'%(price)
-    desc_en = '%s rub/24 hours'%(price)
+    if new_model:
+      price = get_price(db, film_id)
+      desc = '%s руб'%(price)
+      desc_en = '%s rub'%(price)
+    else:
+      [ price ] = db_query(db, 'select price from films where id = %s;'%(film_id))
+      desc = '%s руб/24 часа'%(price)
+      desc_en = '%s rub/24 hours'%(price)
   db_disconnect(db)
   result = {
     'ShopID' : shop,
