@@ -153,7 +153,6 @@ def get_active_sessions():
                        'where start_time is not null and state_id=0;', full=True
                    )
   result = {}
-  pprint(lines)
   if lines != []:
     for ( order_id, start_time, session_time, duration, state_id ) in lines:
       result[str(order_id)] = {
