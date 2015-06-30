@@ -547,6 +547,7 @@ def get_user_subscriptions(ip, ua):
     pass
   client_ids = db_query(db, 'select client_id as id from client_info where ip="%s" and mac="%s" group by client_id'%(ip, mac), full=True)
   if client_ids:
+    print 'client found', client_ids
     result['UserID'] = client_ids[0][0] # in every way
     result['Subscriptions'] = []
     if len(client_ids) > 1:
