@@ -292,6 +292,10 @@ def started(db, order_id):
   [ res ] = db_query(db, 'select start_time is not null from orders where id=%d'%(order_id))
   return res == 1
 
+def is_new_model(db, order_id):
+  [ res ] = db_query(db, 'select new_model from orders where id = %s'%(order_id))
+  return res == 1
+
 def get_client_info(db, r_json):
   # getting mac on r_json['IPAddress']
   # if mac is changed then it's new client
@@ -318,14 +322,19 @@ def get_client_info(db, r_json):
   elif state == 3:
     return None
   if 'FilmID' in r_json: # FilmID checking
-    res = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
+    if not is_new_model(db, order_id):
+      res = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
+    else:
+      res = db_query(db, 'select o.id from orders o cross join vidimax v on o.id = v.order_id and o.client_films_id = v.id where o.id = %d'
+                          %(order_id)
+                    )
     if not res: # so this order is not for this film
       return None
   else: # checking for not film
     res = db_query(db, 'select id from orders where id = %d and client_films_id = 0'%(order_id))
     if not res: # so this order is for film not for internet
       return None
-  if mac != ip_mac or ip != r_json['IPAddress'] or user_agent != r_json['UserAgent']:
+  if mac != ip_mac or ip != r_json['IPAddress']:
     ip = r_json['IPAddress']
     user_agent = r_json['UserAgent']
     mac = ip_mac
@@ -338,7 +347,7 @@ def get_client_info(db, r_json):
     'ip' : ip,
     'user_agent' : user_agent,
     'lang' : lang,
-    'state' : state ,
+    'state' : state,
     'changed' : flag
   }
   return result
@@ -501,6 +510,7 @@ def get_film_session(request_json):
   mac = get_mac(request_json['IPAddress'])
   db = db_connect()
   try: # checking user code
+    print "checking"
     res = db_query(db, 'select o.id from orders o cross join '
                        '(select client_orders_id from client_info where mac = "%s" and ip = "%s" order by update_time desc) s on s.client_orders_id = o.id '
                        'where client_films_id=%s and begin_time is not null and end_time is null limit 1;'
@@ -568,7 +578,8 @@ def get_session(request_json, update=False):
   if vip_client:
     print "is vip client"
     if is_film:
-      result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
+      result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+#      result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
     result['Result'] = True
     return result
   if 'Code' in request_json:
@@ -599,7 +610,8 @@ def get_session(request_json, update=False):
         'Logout' : client_info['state']
       }
       if is_film:
-        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
+        result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+#        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
         print result['URL']
       if client_info['changed']:
         print 'if update:'
@@ -607,8 +619,8 @@ def get_session(request_json, update=False):
           update_client_info(db, client_info, False)
         else:
           result['Result'] = False
-  except KeyError:
-    print "KeyError"
+  except KeyError as e:
+    print 'KeyError: ' + str(e)
     result = None
   db_disconnect(db)
   return result

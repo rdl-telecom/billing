@@ -155,14 +155,14 @@ def api_auth():
     return json_response({},status=401)
   if request.method == 'GET':
   # GET method
-#     print 'GET'
+    print 'GET'
     res = get_session(r_json)
     if not res:
       return json_response({} , status=400)
     return json_response(res, status=200)
   else:
   # POST method
-#     print 'POST'
+    print 'POST'
     res = get_session(r_json, update=True)
     if not res:
       return json_response({} , status=400)
@@ -171,6 +171,7 @@ def api_auth():
 
 ##### /GetSubscriptions #####
 ##### Without authorization
+@app.route('/checkSubscriptions', methods = [ 'POST' ])
 @app.route('/GetSubscriptions', methods = [ 'POST' ])
 def api_get_subscriptions():
   if request.headers['Content-Type'] != 'application/json':
