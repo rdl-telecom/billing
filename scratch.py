@@ -32,4 +32,4 @@ def gen_code(length=scratch_length):
   return code
 
 if __name__ == '__main__':
-  print gen_code(4)
+  print gen_code()

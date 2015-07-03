@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!bin/python
 # -*- coding: utf-8 -*-
 
 from billing import get_active_sessions, start_session, stop_session, end_session
