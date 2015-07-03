@@ -235,14 +235,17 @@ def add_device_counter(db, order_id):
 
 def check_order(db, payment_info):
   result = True
-  row = db_query(db, 'select price, payment_time from orders left join tariffs on tariff_id = tariffs.id '
+  row = db_query(db, 'select direction, price, payment_time, tariff_id from orders left join tariffs on tariff_id = tariffs.id '
            'left join shops on shop_id = shops.id '
            'where shop="%s" and order_id="%s";'
             %(payment_info['shop_id'], payment_info['order_id'])
           )
   if not row:
     return False
-  [ summ, p_time ] = row
+  [ direction, s, p_time, tariff_id ] = row
+  summ = s
+  if direction:
+      summ = tariffs.get_price(direction, tariff_id)
   if (payment_info['sum'] < summ) or p_time:
     return False
   return True
@@ -417,7 +420,7 @@ def is_scratch_code(db, code):
   if match_code(code) and len(code) == settings.scratch_length:
     res = db_query(db, 'select service, type, price from tariffs '
                        'where id = (select tariff_id from codes where key_value="%s" and serial is not null and not used) '
-		       'and (select id from orders where code="%s") is null;'%(code, code)
+		               'and (select id from orders where code="%s") is null;'%(code, code)
                   )
     if res:
       result = {

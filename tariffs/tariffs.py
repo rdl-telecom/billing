@@ -40,3 +40,13 @@ def get_duration(direction, tariff_id):
                       where d.abbr="{0}" and t.id={1};'.format(direction, tariff_id)
                     )
     return microseconds_to_timedelta(usecs)
+
+def get_price(direction, tariff_id):
+    result = db.query('select t.price from tariffs_directiontariff dt \
+                       left join tariffs_direction d on dt.direction_id=d.id \
+                       right join tariffs_tariff t on t.id=dt.tariff_id \
+                       where d.abbr="{0}" and t.id={1};'.format(direction, tariff_id)
+                     )
+    if result:
+        result = result[0]
+    return result

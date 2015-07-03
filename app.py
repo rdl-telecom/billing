@@ -226,7 +226,7 @@ def api_get_film_id():
 if __name__ == '__main__':
 #  app.logger.debug('app started in standalone mode')
 #  app.run(host='0.0.0.0', debug=True)
-  app.run(debug=True,host='0.0.0.0',port=2910)
-#  app.run(debug=True,host='0.0.0.0',port=8000)
+#  app.run(debug=True,host='0.0.0.0',port=2910)
+  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()
