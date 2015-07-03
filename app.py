@@ -14,6 +14,7 @@ from vidimax import check_sign, add_film_info
 from pprint import pprint
 import logging
 from settings import logs_dir, default_shop
+import tariffs
 
 app = Flask(__name__)
 app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
@@ -54,7 +55,10 @@ def api_gettariffs():
     return json_response({},status=401)
   try:
     if 'Service' in r_json:
-      data = get_tariffs(r_json['Service'])
+      if 'Direction' in r_json:
+        data = tariffs.get_list_by_service_and_direction(r_json['Service'], r_json['Direction'])
+      else:
+        data = get_tariffs(r_json['Service'])
     elif 'FilmID' in r_json:
       data = get_film_price(r_json['FilmID'])
     else:
@@ -74,6 +78,7 @@ def api_old_orderid():
   if not user_ok(r_json):
     return json_response({},status=401)
   try:
+    print r_json
     code_of_service = r_json['CodeOfService']
     tariff = r_json['Tariff']
     film_id = None
@@ -82,9 +87,12 @@ def api_old_orderid():
     payment_system = default_shop
     if 'Shop' in r_json:
       payment_system = r_json['Shop'].upper()
+    direction = None
+    if 'Direction' in r_json:
+      direction = r_json['Direction']
   except:
     return json_response({}, status=400)
-  data = get_first_data(code_of_service, tariff, film_id, payment_system)
+  data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction)
   status = 200
   if data == None:
     status = 400

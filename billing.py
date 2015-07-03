@@ -14,6 +14,7 @@ from vidimax import update_order_id, get_price, get_subs_info
 from db import db_connect, db_disconnect, db_query
 # local imports
 import settings
+import tariffs
 
 from pprint import pprint
 
@@ -148,20 +149,24 @@ def user_ok(request_json):
 #####
 def get_active_sessions():
   db = db_connect()
-  lines = db_query(db, 'select ords.id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
+  lines = db_query(db, 'select ords.id, ords.direction, tariff_id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
                        'left join tariffs tar on tariff_id = tar.id '
                        'where start_time is not null and state_id=0;', full=True
                    )
   result = {}
   pprint(lines)
   if lines != []:
-    for ( order_id, start_time, session_time, duration, state_id ) in lines:
+    for ( order_id, direction, tariff_id, start_time, session_time, dur, state_id ) in lines:
+      duration = dur
+      if direction:
+        duration = tariffs.get_duration(direction, tariff_id)
       result[str(order_id)] = {
         'start_time' : start_time,
         'session_time' : session_time,
         'duration' : duration,
         'state' : state_id
       }
+
   db_disconnect(db)
   return result
 
@@ -210,8 +215,13 @@ def get_shop_id(db, payment_system=None):
 
 
 def get_tariff(db, service, tariff, film_id, new_model=False):
+  serv = service.upper()
+  tar = tariff.upper()
   if not film_id:
-    return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(service.upper(), tariff.upper()))
+    if tar in ['ONEHOUR', 'ONEDAY']:
+      return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(serv, tar))
+    else:
+      return tariffs.get_tariff(serv, tar) 
   elif tariff.upper() == 'FILM':
     query = 'select t.id, f.price from tariffs t left join films f on f.id = %s where service="%s" and type="%s";'
     if new_model:
@@ -457,10 +467,15 @@ def sms_sent(order_id, status=2):
   db_disconnect(db)
 
 ####################################################################################################################################################
-def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False):
-  def create_order(db, shop, tariff, film):
+def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None):
+  def create_order(db, shop, tariff, film, direction=None):
     if not film:
-      result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
+      if not direction:
+        result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
+      else:
+        result = db_query(db, 'insert into orders (shop_id, tariff_id, direction) values ( %s, %s, "%s" )'%(shop, tariff, direction.upper()),
+                            commit=True, lastrow=True
+                         )
     else:
       query = 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
       if new_model:
@@ -475,13 +490,18 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
   shop_id = get_shop_id(db, payment_system)
   if not (tariff_id and tariff_sum and shop_id):
     return None
-  order_num = create_order(db, shop_id, tariff_id, film_id)
+  order_num = create_order(db, shop_id, tariff_id, film_id, direction)
   if not order_num:
     return None
   order_id = '%s%020d'%(service.upper(), order_num)
   db_query(db, 'update orders set order_id="%s" where id=%d'%(order_id, order_num), fetch=False, commit=True)
   if not film_id:
-    [ desc, desc_en ] = db_query(db, 'select t.button_name, t.button_name_en from orders o left join tariffs t on t.id = o.tariff_id where o.id = %d;'%(order_num))
+    if not direction:
+      [ desc, desc_en ] = db_query(db, 'select t.button_name, t.button_name_en from orders o left join tariffs t on t.id = o.tariff_id where o.id = %d;'
+                                    %(order_num)
+                                  )
+    else:
+      [ desc, desc_en ] = tariffs.get_descriptions(tariff_id)
   else: # is film
     if new_model:
       price = get_price(db, film_id)
