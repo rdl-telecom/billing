@@ -34,7 +34,7 @@ def get_descriptions(tariff_id):
     return db.query('select button_ru, button_en from tariffs_description where tariff_id={0}'.format(tariff_id))
 
 def get_duration(direction, tariff_id):
-    usecs = db.query('select if(t.duration <> 0, t.duration, d.duration) from tariffs_directiontariff dt \
+    (usecs, ) = db.query('select if(t.duration <> 0, t.duration, d.duration) from tariffs_directiontariff dt \
                       left join tariffs_direction d on dt.direction_id=d.id \
                       right join tariffs_tariff t on t.id=dt.tariff_id \
                       where d.abbr="{0}" and t.id={1};'.format(direction, tariff_id)
