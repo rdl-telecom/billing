@@ -12,6 +12,7 @@ from check import get_phone, match_code
 from scratch import gen_code
 from vidimax import update_order_id, get_price, get_subs_info
 from db import db_connect, db_disconnect, db_query
+from icomera_auth import auth_client, deny_client
 # local imports
 import settings
 import tariffs
@@ -196,7 +197,11 @@ def end_session(order_id):
                'start_time=null '
                'where id=%d'%(order_id), fetch=False, commit=True
           )
+  res = db_query(db, 'select ip from client_info where client_orders_id=%s'%(order_id), full=True)
   db_disconnect(db)
+  for line in res:
+      ip = line[0]
+      deny_client(ip)
 
 #####
 def get_shop(payment_system=None):
@@ -612,15 +617,16 @@ def get_session(request_json, update=False):
         add_vip_client(db, request_json['Code'], request_json['IPAddress'], mac)
       result['Result'] = True
       return result
+    else:
+      tar = is_scratch_code(db, request_json['Code'])
+      if tar and not is_film: # i don't accept scratch card payment for films for a while
+        fd = get_first_data(tar['service'], tar['tariff'], None, 'SCRATCH')
+        order_id = get_order_id(fd['OrderID'])
+        sms_sent(order_id)
+        update_order(generate_scratch_payment(fd['ShopID'], fd['OrderID'], fd['Sum'], request_json['Code']))
+        scratch_set_used(db, request_json['Code'])
   if is_film and not update:
     return get_film_session(request_json)
-  tar = is_scratch_code(db, request_json['Code'])
-  if tar and not is_film: # i don't accept scratch card payment for films for a while
-    fd = get_first_data(tar['service'], tar['tariff'], None, 'SCRATCH')
-    order_id = get_order_id(fd['OrderID'])
-    sms_sent(order_id)
-    update_order(generate_scratch_payment(fd['ShopID'], fd['OrderID'], fd['Sum'], request_json['Code']))
-    scratch_set_used(db, request_json['Code'])
   try:
     pprint('client_info = get_client_info:')
     client_info = get_client_info(db, request_json)
@@ -636,10 +642,13 @@ def get_session(request_json, update=False):
         result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
 #        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
         print result['URL']
+      else:
+        auth_client(client_info['ip'], client_info['mac'])
       if client_info['changed']:
         print 'if update:'
         if update:
           update_client_info(db, client_info, False)
+          auth_client(client_info['ip'], mac)
         else:
           result['Result'] = False
   except KeyError as e:
