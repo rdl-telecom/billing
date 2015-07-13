@@ -24,7 +24,11 @@ class DB:
         self._db.close()
 
     def query(self, query, fetch=True, fetchall=False, commit=False, lastrow=False):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
+        except:
+            self.connect()
+            cursor = self._db.cursor()
         pprint(query)
         cursor.execute(query)
         result = None

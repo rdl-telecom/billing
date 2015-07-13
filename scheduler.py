@@ -6,6 +6,7 @@ from billing import get_active_sessions, start_session, stop_session, end_sessio
 import datetime
 import time
 import signal
+from threading import Thread
 #import sched
 
 
@@ -26,7 +27,9 @@ if __name__ == '__main__':
       time_delta = datetime.datetime.now() - sessions[order_id]['start_time'] + sessions[order_id]['session_time']
       if time_delta > sessions[order_id]['duration']:
         # if delta is bigger than a session dutation then we need to end it anyway
-        end_session(int(order_id))
+        thread = Thread(target=end_session, args=(int(order_id),))
+        thread.daemon = True
+        thread.start()
         continue
       # if not we need to start scheduler
     time.sleep(5)

@@ -150,16 +150,20 @@ def user_ok(request_json):
 #####
 def get_active_sessions():
   db = db_connect()
-  lines = db_query(db, 'select ords.id, ords.direction, tariff_id, ords.start_time, ords.session_time, tar.duration, ords.state_id from orders ords '
+  lines = db_query(db, 'select ords.id, ords.direction, tariff_id, ords.start_time, ords.session_time, '
+                       'ords.client_films_id, tar.duration, ords.state_id from orders ords '
                        'left join tariffs tar on tariff_id = tar.id '
                        'where start_time is not null and state_id=0;', full=True
                    )
   result = {}
   if lines != []:
-    for ( order_id, direction, tariff_id, start_time, session_time, dur, state_id ) in lines:
+    for ( order_id, direction, tariff_id, start_time, session_time, is_film, dur, state_id ) in lines:
       duration = dur
       if direction:
-        duration = tariffs.get_duration(direction, tariff_id)
+        if is_film == 0:
+          duration = tariffs.get_duration(direction, tariff_id)
+        else:
+          duration = tariffs.get_duration(direction, 6) # hardcode
       result[str(order_id)] = {
         'start_time' : start_time,
         'session_time' : session_time,
@@ -225,7 +229,11 @@ def get_tariff(db, service, tariff, film_id, new_model=False):
     if tar in ['ONEHOUR', 'ONEDAY']:
       return db_query(db, 'select id, price from tariffs where service="%s" and type="%s";'%(serv, tar))
     else:
-      return tariffs.get_tariff(serv, tar) 
+      res = tariffs.get_tariff(serv, tar)
+      if res:
+        return res
+      else:
+        return tariffs.get_tariff(serv, '1HOUR') #hardcode 
   elif tariff.upper() == 'FILM':
     query = 'select t.id, f.price from tariffs t left join films f on f.id = %s where service="%s" and type="%s";'
     if new_model:
@@ -240,17 +248,17 @@ def add_device_counter(db, order_id):
 
 def check_order(db, payment_info):
   result = True
-  row = db_query(db, 'select direction, price, payment_time, tariff_id from orders left join tariffs on tariff_id = tariffs.id '
+  row = db_query(db, 'select direction, price, payment_time, tariff_id, client_films_id from orders left join tariffs on tariff_id = tariffs.id '
            'left join shops on shop_id = shops.id '
            'where shop="%s" and order_id="%s";'
             %(payment_info['shop_id'], payment_info['order_id'])
           )
   if not row:
     return False
-  [ direction, s, p_time, tariff_id ] = row
+  [ direction, s, p_time, tariff_id, is_film ] = row
   summ = s
-  if direction:
-      summ = tariffs.get_price(direction, tariff_id)
+  if direction and is_film == 0:
+    summ = tariffs.get_price(direction, tariff_id)
   if (payment_info['sum'] < summ) or p_time:
     return False
   return True
@@ -477,19 +485,17 @@ def sms_sent(order_id, status=2):
 def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None):
   def create_order(db, shop, tariff, film, direction=None):
     if not film:
-      if not direction:
-        result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
-      else:
-        result = db_query(db, 'insert into orders (shop_id, tariff_id, direction) values ( %s, %s, "%s" )'%(shop, tariff, direction.upper()),
-                            commit=True, lastrow=True
-                         )
+      result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
     else:
       query = 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
       if new_model:
-        query = 'insert into orders (shop_id, tariff_id, client_films_id, new_model) values (%s, %s, %s, 1);'
+        query = 'insert into orders (shop_id, tariff_id, client_films_id, new_model) values (%s, %s, %s, 1);' # hardcode
       result = db_query(db, query%(shop, tariff, film), fetch=False, commit=True, lastrow=True)
       if new_model:
         update_order_id(db, film, result)
+    if direction:
+      print 'adding direction "%s" to order %s'%(direction, result)
+      db_query(db, 'update orders set direction="%s" where id=%s;'%(direction, result), fetch=False, commit=True)
     return result
   db = db_connect()
   tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id, new_model)
@@ -512,7 +518,7 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
   else: # is film
     if new_model:
       price = get_price(db, film_id)
-      desc = '%s руб'%(price)
+      desc = '%s руб'%(price)       # hardcode
       desc_en = '%s rub'%(price)
     else:
       [ price ] = db_query(db, 'select price from films where id = %s;'%(film_id))

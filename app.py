@@ -89,7 +89,7 @@ def api_old_orderid():
       payment_system = r_json['Shop'].upper()
     direction = None
     if 'Direction' in r_json:
-      direction = r_json['Direction']
+      direction = r_json['Direction'].upper()
   except:
     return json_response({}, status=400)
   data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction)
@@ -116,7 +116,10 @@ def api_orderid():
   payment_system = default_shop
   if 'Shop' in r_json:
     payment_system = r_json['Shop'].upper()
-  data = get_first_data('VIDEOSVC', 'FILM', film_id, payment_system, new_model=True)
+  direction = None
+  if 'Direction' in r_json:
+    direction = r_json['Direction'].upper()
+  data = get_first_data('VIDEOSVC', 'FILM', film_id, payment_system, new_model=True, direction=direction)
   status = 200
   if data == None:
     status = 400
