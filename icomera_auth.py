@@ -38,8 +38,6 @@ def auth_client(ip, mmac):
         logger.debug('Tried to find mac fo %s: MAC = %s'%(ip, mac))
     if mac == '00:00:00:00:00:00':
         logger.info('Cannot find MAC ( IP = %s; MAC = %s; Gateway = %s )'%(ip, mac, gw))
-        logger.debug('Returning "False"')
-        return False
     ssh.exec_command('hotcli add %s %s'%(ip, mac))
     ssh.exec_command('hotcli allow %s'%(ip))
     ssh.close()

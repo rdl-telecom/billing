@@ -7,6 +7,7 @@ import io
 from xmlutils import xml2json
 from urlparse import urlparse, parse_qs
 import datetime
+import time
 from mac import get_mac
 from check import get_phone, match_code
 from scratch import gen_code
@@ -158,12 +159,12 @@ def get_active_sessions():
   result = {}
   if lines != []:
     for ( order_id, direction, tariff_id, start_time, session_time, is_film, dur, state_id ) in lines:
+      print order_id, direction, dur
       duration = dur
-      if direction:
-        if is_film == 0:
-          duration = tariffs.get_duration(direction, tariff_id)
-        else:
-          duration = tariffs.get_duration(direction, 6) # hardcode
+      if direction and not is_film:
+        duration = tariffs.get_duration(direction, tariff_id)
+#        else:
+#          duration = tariffs.get_direction_trip_duration(direction)
       result[str(order_id)] = {
         'start_time' : start_time,
         'session_time' : session_time,
@@ -205,7 +206,8 @@ def end_session(order_id):
   db_disconnect(db)
   for line in res:
       ip = line[0]
-      deny_client(ip)
+      while not deny_client(ip):
+          time.sleep(10)
 
 #####
 def get_shop(payment_system=None):
@@ -410,9 +412,9 @@ def update_order(payment_info):
   if not client_id:
     client_id = add_client_phone(db, payment_info['phone'])
   code = payment_info['approval_code']
-  if not code:
-    code = new_code()
   if check_order(db, payment_info):
+    if not code:
+      code = new_code()
     client_order_id = add_client_order(db, client_id, payment_info['order_id'])
     db_query(db, 'update orders set billnumber="%s", client_id=%d, payment_time="%s", code="%s" where order_id="%s";'
                  %(payment_info['uni_billnumber'], client_id, payment_info['date'], code, payment_info['order_id']),
@@ -518,12 +520,12 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
   else: # is film
     if new_model:
       price = get_price(db, film_id)
-      desc = '%s руб'%(price)       # hardcode
-      desc_en = '%s rub'%(price)
+      desc = '%s руб / 24 часа'%(price)       # hardcode
+      desc_en = '%s rub / 24 hours'%(price)
     else:
       [ price ] = db_query(db, 'select price from films where id = %s;'%(film_id))
-      desc = '%s руб/24 часа'%(price)
-      desc_en = '%s rub/24 hours'%(price)
+      desc = '%s руб / 24 часа'%(price)
+      desc_en = '%s rub / 24 hours'%(price)
   db_disconnect(db)
   result = {
     'ShopID' : shop,

@@ -41,6 +41,10 @@ def get_duration(direction, tariff_id):
                     )
     return microseconds_to_timedelta(usecs)
 
+def get_direction_trip_duration(direction):
+    (usecs, ) = db.query('select duration from tariffs.tariffs_direction where abbr="{0}";'.format(direction))
+    return microseconds_to_timedelta(usecs)
+
 def get_price(direction, tariff_id):
     result = db.query('select t.price from tariffs_directiontariff dt \
                        left join tariffs_direction d on dt.direction_id=d.id \
