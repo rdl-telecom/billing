@@ -490,16 +490,64 @@ def sms_sent(order_id, status=2):
   db_query(db, 'update orders set sms_sent=%d where id=%d;'%(status, order_id), fetch=False, commit=True)
   db_disconnect(db)
 
+def get_client_codes(direction, phone, ip):
+  result = {}
+  try:
+    mac = get_mac(ip).replace(':','')
+    if mac == '0'*12:
+      raise ValueError('No MAC address for %s'%(ip))
+    db = db_connect()
+    res = db_query(db, "select o.code, s.state, "
+                       "substr(o.order_id, 1, 8) as service, "
+                       "if(substr(o.order_id, 1, 8)='INTERNET', "
+                          "if(o.direction is not null, t.button_name, tt.button_ru), "
+                          "if(o.new_model=1,v.name,f.name)) as tariff_ru, "
+                       "if(substr(o.order_id, 1, 8)='INTERNET', "
+                          "if(o.direction is not null, t.button_name_en, tt.button_en), "
+                          "if(o.new_model=1,v.name,f.name)) as tariff_en, "
+                       "time(if(o.begin_time is not null, now() - o.begin_time, '00:00:00')) as elapsed, "
+                       "if(o.dev_count > 1, 0, 2-o.dev_count) as devices "
+                       "from orders o "
+                       "left outer join tariffs t on t.id = o.tariff_id "
+                       "left outer join tariffs.tariffs_description tt on tt.tariff_id = o.tariff_id "
+                       "left join clients c on c.id = o.client_id "
+                       "left join states s on s.id = o.state_id "
+                       "left outer join films f on f.id = o.client_films_id "
+                       "left outer join vidimax v on v.id = o.client_films_id "
+                       "where o.payment_time is not null and o.code <> '' and o.end_time is null and o.state_id <> 3 " # hardcode
+                       "and o.dev_count < 2 and o.direction='%s' and c.phone='%s' and o.first_mac=x'%s'"%(direction, phone, mac),
+                       full=True
+                  )
+    count = 0
+    for code, state, service, tariff_name_ru, tariff_name_en, elapsed, dev_remained in res:
+      code_info = {
+        'Code': code,
+        'Status': state,
+        'Service': service,
+        'TariffName_RU': unicode(tariff_name_ru),
+        'TariffName_EN': unicode(tariff_name_en),
+        'DevicesRemained': dev_remained
+      }
+      if elapsed:
+        code_info['Elapsed'] = str(elapsed)
+      result[str(count)] = code_info
+      count += 1
+  except Exception as e:
+    print e
+  return result
+
 ####################################################################################################################################################
-def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None):
-  def create_order(db, shop, tariff, film, direction=None):
+def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None, ip=None):
+  def create_order(db, shop, tariff, film, direction=None, ip=None):
+    mac = get_mac(ip).replace(':','') or '000000000000'
+    print mac
     if not film:
-      result = db_query(db, 'insert into orders (shop_id, tariff_id) values ( %s, %s );'%(shop, tariff), fetch=False, commit=True, lastrow=True)
+      result = db_query(db, "insert into orders (shop_id, tariff_id, first_mac) values ( %s, %s , x'%s');"%(shop, tariff, mac), fetch=False, commit=True, lastrow=True)
     else:
-      query = 'insert into orders (shop_id, tariff_id, client_films_id) values (%s, %s, %s);'
+      query = "insert into orders (shop_id, tariff_id, client_films_id, first_mac) values (%s, %s, %s, x'%s');"
       if new_model:
-        query = 'insert into orders (shop_id, tariff_id, client_films_id, new_model) values (%s, %s, %s, 1);' # hardcode
-      result = db_query(db, query%(shop, tariff, film), fetch=False, commit=True, lastrow=True)
+        query = "insert into orders (shop_id, tariff_id, client_films_id, new_model, first_mac) values (%s, %s, %s, 1, x'%s');" # hardcode
+      result = db_query(db, query%(shop, tariff, film, mac), fetch=False, commit=True, lastrow=True)
       if new_model:
         update_order_id(db, film, result)
     if direction:
@@ -512,7 +560,7 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
   shop_id = get_shop_id(db, payment_system)
   if not (tariff_id and tariff_sum and shop_id):
     return None
-  order_num = create_order(db, shop_id, tariff_id, film_id, direction)
+  order_num = create_order(db, shop_id, tariff_id, film_id, direction, ip)
   if not order_num:
     return None
   order_id = '%s%020d'%(service.upper(), order_num)
