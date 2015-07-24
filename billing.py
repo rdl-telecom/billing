@@ -244,9 +244,13 @@ def get_tariff(db, service, tariff, film_id, new_model=False):
 
 #####
 def add_device_counter(db, order_id):
-  print 'add_device_counter'
-  print order_id
-  db_query(db, 'update orders set dev_count = dev_count + 1 where id=%d'%(order_id), fetch=False, commit=True)
+  print 'add_device_counter', order_id
+  ( current, ) = db_query(db, 'select dev_counter from orders were id=%id'%(order_id))
+  result = True
+  if dev_counter < 2: # hardcode
+    db_query(db, 'update orders set dev_count = dev_count + 1 where id=%d'%(order_id), fetch=False, commit=True)
+    result = True
+  return result
 
 def check_order(db, payment_info):
   result = True
@@ -380,13 +384,17 @@ def get_client_info(db, r_json):
   return result
 
 def update_client_info(db, client_info, logout):
+  result = client_info
   if not logout:
     pprint(client_info)
-    res = db_query(db, 'select id from client_info where client_id=%d and mac="%s" and user_agent="%s" and client_orders_id=%d;'
-                    %(client_info['client_id'], client_info['mac'], client_info['user_agent'], client_info['order_id'])
+    res = db_query(db, 'select id from client_info where client_id=%d and mac="%s" and client_orders_id=%d;'
+                    %(client_info['client_id'], client_info['mac'], client_info['order_id'])
                   )
-    if not res:
-      add_client_info(db, client_info)
+    if not res: # new client device
+      if add_device_counter(db, client_info['order_id']):
+        add_client_info(db, client_info)
+      else:
+        return None
     else:
       db_query(db, 'update client_info set ip="%s", lang="%s", update_time=now(), client_orders_id=%d where id=%d;'
                 %(client_info['ip'], client_info['lang'], client_info['order_id'], res[0]),
@@ -398,10 +406,9 @@ def update_client_info(db, client_info, logout):
       query += 'start_time=now(), '
     query += 'state_id=0 where id=%d'%(client_info['order_id'])
     db_query(db, query, fetch=False, commit=True)
-    add_device_counter(db, client_info['order_id'])
   elif started(db, client_info['order_id']):
     stop_session(order_id, by_user=True)
-  return client_info
+  return result
 
 #####
 def update_order(payment_info):
@@ -654,9 +661,8 @@ def get_session(request_json, update=False):
         auth_client(client_info['ip'], client_info['mac'])
       if client_info['changed']:
         print 'if update:'
-        if update:
-          update_client_info(db, client_info, False)
-          auth_client(client_info['ip'], mac)
+        if update and update_client_info(db, client_info, False):
+            auth_client(client_info['ip'], mac)
         else:
           result['Result'] = False
   except KeyError as e:
