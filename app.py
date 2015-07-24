@@ -6,7 +6,7 @@ sys.setdefaultencoding('utf-8')
 
 from flask import Flask, Response, jsonify, request, redirect, url_for
 import json
-from billing import json_response, user_ok, get_first_data, parse_xml, url2json, update_order, get_session, get_tariffs, get_shopid_by_orderid, get_film_price, get_filmid_by_orderid, get_user_subscriptions
+from billing import *
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 from icomera_auth import auth_client
 from vidimax import check_sign, add_film_info
@@ -77,22 +77,22 @@ def api_old_orderid():
   r_json = url2json(request.url)
   if not user_ok(r_json):
     return json_response({},status=401)
+
+  print r_json
+
   try:
-    print r_json
     code_of_service = r_json['CodeOfService']
     tariff = r_json['Tariff']
-    film_id = None
-    if 'FilmID' in r_json:
-      film_id = r_json['FilmID']
-    payment_system = default_shop
-    if 'Shop' in r_json:
-      payment_system = r_json['Shop'].upper()
-    direction = None
-    if 'Direction' in r_json:
-      direction = r_json['Direction'].upper()
   except:
     return json_response({}, status=400)
-  data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction)
+
+  film_id = r_json.get('FilmID', None)
+  payment_system = r_json.get('Shop', default_shop).upper()
+  direction = r_json.get('Direction', None).upper()
+  ip = r_json.get('IPAddress', None)
+
+  data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction, ip=ip)
+
   status = 200
   if data == None:
     status = 400
@@ -105,28 +105,56 @@ def api_orderid():
   r_json = url2json(request.url)
   if not user_ok(r_json):
     return json_response({'error':'Login required'},status=401)
+
+  print r_json
+
   for param in [ 'id', 'type', 'name', 'price', 'ts', 'sign' ]:
     if param not in r_json:
       return json_response({'error':'Incorrect parameters'}, status=400)
   if not check_sign(r_json):
     return json_response({'error':'Wrong sign'}, status=400)
+
   film_id = add_film_info(r_json)
   if not film_id:
     return json_response({'error':'Already present'}, status=400)
-  payment_system = default_shop
-  if 'Shop' in r_json:
-    payment_system = r_json['Shop'].upper()
-  direction = None
-  if 'Direction' in r_json:
-    direction = r_json['Direction'].upper()
-  data = get_first_data('VIDEOSVC', 'FILM', film_id, payment_system, new_model=True, direction=direction)
+
+  payment_system = r_json.get('Shop', default_shop).upper()
+  direction = r_json.get('Direction', None).upper()
+  ip = r_json.get('IPAddress', None)
+
+  data = get_first_data('VIDEOSVC', 'FILM', film_id, payment_system, new_model=True, direction=direction, ip=ip)
+
   status = 200
-  if data == None:
+  if not data:
     status = 400
     data = {'error':'Add order error'}
   return json_response(data, status)
-
 ########################
+
+#####  /FindCodes  #####
+@app.route('/FindCodes', methods = [ 'GET' ])
+def api_findcode():
+  r_json = url2json(request.url)
+
+  print r_json
+
+  if not user_ok(r_json):
+    return json_response({},status=401)
+ 
+  direction = r_json.get('Direction', None).upper()
+  ip = r_json.get('IPAddress', None)
+  phone = r_json.get('Phone', None)
+  if phone:
+    phone = '+%s'%phone[1:]
+  if not direction or not ip or not phone:
+    return json_response({'error':'Invalid parameters'}, status=400)
+
+  data = get_client_codes(direction, phone, ip)
+
+  print data
+
+  return json_response(data)
+
 #####  /FullXML  #####
 @app.route('/FullXML', methods = [ 'POST' ])
 def api_fullxml():
@@ -229,7 +257,7 @@ def api_get_film_id():
 if __name__ == '__main__':
 #  app.logger.debug('app started in standalone mode')
 #  app.run(host='0.0.0.0', debug=True)
-  app.run(debug=True,host='0.0.0.0',port=2910)
-#  app.run(debug=True,host='0.0.0.0',port=8000)
+#  app.run(debug=True,host='0.0.0.0',port=2910)
+  app.run(debug=True,host='0.0.0.0',port=8000)
 #  app.run(debug=True, port=8000)
 #  app.run()
