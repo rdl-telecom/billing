@@ -245,7 +245,7 @@ def get_tariff(db, service, tariff, film_id, new_model=False):
 #####
 def add_device_counter(db, order_id):
   print 'add_device_counter', order_id
-  ( current, ) = db_query(db, 'select dev_counter from orders where id=%s'%(order_id))
+  ( current, ) = db_query(db, 'select dev_count from orders where id=%s'%(order_id))
   result = True
   if current < 2: # hardcode
     db_query(db, 'update orders set dev_count = dev_count + 1 where id=%d'%(order_id), fetch=False, commit=True)
