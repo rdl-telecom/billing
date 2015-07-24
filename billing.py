@@ -493,7 +493,9 @@ def sms_sent(order_id, status=2):
 def get_client_codes(direction, phone, ip):
   result = {}
   try:
-    mac = get_mac(ip).replace(':','') or '000000000000'
+    mac = get_mac(ip).replace(':','')
+    if mac == '0'*12:
+      raise ValueError('No MAC address for %s'%(ip))
     db = db_connect()
     res = db_query(db, "select o.code, s.state, "
                        "substr(o.order_id, 1, 8) as service, "
@@ -513,7 +515,7 @@ def get_client_codes(direction, phone, ip):
                        "left outer join films f on f.id = o.client_films_id "
                        "left outer join vidimax v on v.id = o.client_films_id "
                        "where o.payment_time is not null and o.code <> '' and o.end_time is null and o.state_id <> 3 " # hardcode
-                       "and o.direction='%s' and c.phone='%s' and o.first_mac=x'%s'"%(direction, phone, mac),
+                       "and o.dev_count < 2 and o.direction='%s' and c.phone='%s' and o.first_mac=x'%s'"%(direction, phone, mac),
                        full=True
                   )
     count = 0
