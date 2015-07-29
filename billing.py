@@ -206,8 +206,10 @@ def end_session(order_id):
   db_disconnect(db)
   for line in res:
       ip = line[0]
-      while not deny_client(ip):
+      attempts = 100 # hardcode
+      while not deny_client(ip) and attempts > 0:
           time.sleep(10)
+          attempts -= 1
 
 #####
 def get_shop(payment_system=None):
