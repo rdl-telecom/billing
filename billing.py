@@ -550,18 +550,18 @@ def get_code_by_billnumber(direction, ip, order, billnumber):
                        "and o.dev_count < 2 and o.direction='%s' and o.billnumber='%s' and o.first_mac=x'%s' and o.order_id='%s'"
                        %(direction, billnumber, mac, order),
                   )
-    if not res:
-      r = False
-      code = None
-    else:
-      r = True
-      code = res[0]
-    result = {
-      'Code': code,
-      'Result': r
-    }
   except Exception as e:
     print e
+  if not res:
+    r = False
+    code = None
+  else:
+    r = True
+    code = res[0]
+  result = {
+    'Code': code,
+    'Result': r
+  }
   return result
 
 ####################################################################################################################################################
