@@ -540,6 +540,7 @@ def get_client_codes(direction, phone, ip):
 
 def get_code_by_billnumber(direction, ip, order, billnumber):
   result = {}
+  res = None
   try:
     mac = get_mac(ip).replace(':','')
     if mac == '0'*12:
