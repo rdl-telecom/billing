@@ -538,6 +538,32 @@ def get_client_codes(direction, phone, ip):
     print e
   return result
 
+def get_code_by_billnumber(direction, ip, order, billnumber):
+  result = {}
+  try:
+    mac = get_mac(ip).replace(':','')
+    if mac == '0'*12:
+      raise ValueError('No MAC address for %s'%(ip))
+    db = db_connect()
+    res = db_query(db, "select o.code from orders o "
+                       "where o.payment_time is not null and o.code <> '' and o.end_time is null and o.state_id <> 3 " # hardcode
+                       "and o.dev_count < 2 and o.direction='%s' and o.billnumber='%s' and o.first_mac=x'%s' and o.order_id='%s'"
+                       %(direction, billnumber, mac, order),
+                  )
+    if not res:
+      r = False
+      code = None
+    else:
+      r = True
+      code = res[0]
+    result = {
+      'Code': code,
+      'Result': r
+    }
+  except Exception as e:
+    print e
+  return result
+
 ####################################################################################################################################################
 def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None, ip=None):
   def create_order(db, shop, tariff, film, direction=None, ip=None):

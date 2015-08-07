@@ -150,10 +150,29 @@ def api_findcode():
     return json_response({'error':'Invalid parameters'}, status=400)
 
   data = get_client_codes(direction, phone, ip)
-
   print data
-
   return json_response(data)
+########################
+
+#####  /GetCode  #####
+@app.route('/GetCode', methods = [ 'GET' ])
+def api_getcode():
+  r_json = url2json(request.url)
+  print r_json
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  direction = r_json.get('Direction', None).upper()
+  ip = r_json.get('IPAddress', None)
+  order = r_json.get('OrderID', None)
+  billnumber = r_json.get('BillNumber', None)
+  if not direction or not ip or not order or not billnumber:
+    return json_response({'error':'Invalid parameters'}, status=400)
+
+  data = get_code_by_billnumber(direction, ip, order, billnumber)
+  print data
+  return json_response(data)
+
+########################
 
 #####  /FullXML  #####
 @app.route('/FullXML', methods = [ 'POST' ])
