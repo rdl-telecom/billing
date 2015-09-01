@@ -435,7 +435,7 @@ def update_order(payment_info):
 #####
 def is_vip_code(db, code):
   result = False
-  if match_code(code) and db_query(db, 'select vip from codes where key_value="%s" and expires > now()'%(code)):
+  if match_code(code) and db_query(db, 'select vip from codes where key_value="%s" and now() between activated and expires'%(code)):
     result = True
   return result
 
@@ -695,18 +695,19 @@ def get_session(request_json, update=False):
   db = db_connect()
   mac = get_mac(request_json['IPAddress'])
   vip_client = is_vip_client(db, request_json['IPAddress'], mac)
-  if vip_client:
+  if vip_client: # vip client
     print "is vip client"
     if is_film:
       result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
 #      result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
-    result['Result'] = True
-    return result
+      result['Result'] = True
+      return result
   if 'Code' in request_json:
     if is_vip_code(db, request_json['Code']):
       print "is vip code"
       if not vip_client:
         add_vip_client(db, request_json['Code'], request_json['IPAddress'], mac)
+      auth_client(request_json['IPAddress'], mac)
       result['Result'] = True
       return result
     else:
