@@ -691,6 +691,8 @@ def get_session(request_json, update=False):
   }
   if is_film:
     result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+    if int(request_json['FilmID']) == 694: # hardcode
+      result['URL'] = settings.vidimax_base
     print result['URL']
   db = db_connect()
   mac = get_mac(request_json['IPAddress'])
@@ -699,6 +701,8 @@ def get_session(request_json, update=False):
     print "is vip client"
     if is_film:
       result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+      if int(request_json['FilmID']) == 694: # hardcode
+        result['URL'] = settings.vidimax_base
 #      result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
       result['Result'] = True
       return result
@@ -733,6 +737,8 @@ def get_session(request_json, update=False):
       }
       if is_film:
         result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+        if int(request_json['FilmID']) == 694: # hardcode
+          result['URL'] = settings.vidimax_base
 #        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
         print result['URL']
       else:

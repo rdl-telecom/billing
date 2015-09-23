@@ -229,6 +229,7 @@ def api_auth():
 
 ##### /GetSubscriptions #####
 ##### Without authorization
+@app.route('/checkPermissions', methods = [ 'POST' ])
 @app.route('/checkSubscriptions', methods = [ 'POST' ])
 @app.route('/GetSubscriptions', methods = [ 'POST' ])
 def api_get_subscriptions():
