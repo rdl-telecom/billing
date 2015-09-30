@@ -319,6 +319,7 @@ def api_order_taxi():
   r_json = request.get_json()
   if not user_ok(r_json):
     return json_response({'error':'Authentication needed'},status=401)
+  pprint(r_json)
   for param in [ 'IPAddress', 'Phone', 'Name']:
     if param not in r_json:
       return json_response({'error':'Incorrect parameters'}, status=400)

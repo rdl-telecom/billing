@@ -72,11 +72,10 @@ def fill_send_data(r_json):
         'vgt_cprice' : r_json.get('Price', None),
         'vgt_ctype' : r_json.get('Type', None),
         'vgt_data' : r_json.get('Date', None),
-        'vgt_add' : r_json.get('AddressFrom', None),
+        'vgt_add' : r_json.get('AddressFrom', r_json.get('TrainNumber', None)),
         'vgt_add2' : r_json.get('AddressTo', None),
         'vgt_name' : r_json.get('Name', None),
         'vgt_email' : r_json.get('Email', None),
-        'vgt_train' : r_json.get('TrainNumber', None),
         'vgt_tab' : r_json.get('TableText', None),
         'vgt_comment' : r_json.get('Comment', None)
     }
@@ -85,8 +84,8 @@ def fill_send_data(r_json):
 def send_data(send_data):
     try:
         result = requests.post(taxi_url, data=send_data)
-        print result.headers
-        print result.text
+        if result.text != 'OK':
+            raise Exception('error returned: %s'%result.text)
     except Exception as e:
         print 'send_data: exception: %s'%str(e)
         return False
@@ -95,27 +94,21 @@ def send_data(send_data):
 def process_taxi_order(r_json):
     result = False
     try:
+        print r_json
         if test_phone(r_json):
             client_info = {
                 'ip' : r_json['IPAddress'],
                 'mac' : get_mac(r_json['IPAddress']),
-                'direction' : r_json['Direction']
+                'direction' : r_json['Direction'],
+                'train' : r_json.get('TrainNumber', None)
             }
             data = fill_send_data(r_json)
             format_send_data(data)
-            save_taxi_order(client_info.update(data))
+            client_info.update(data)
+            save_taxi_order(client_info)
             print data
             if send_data(data):
                 result = True
     except Exception as e:
         print 'process_taxi_order: exception: %s'%e
     return result
-
-
-if __name__ == '__main__':
-    test_data = {
-        'Name' : u'Стас',
-        'Phone' : '+7 (903) 553-63-95'
-    }
-
-    print process_taxi_order(test_data)
