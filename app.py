@@ -15,6 +15,7 @@ from pprint import pprint
 import logging
 from settings import logs_dir, default_shop
 import tariffs
+from taxi import process_taxi_order
 
 app = Flask(__name__)
 app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
@@ -201,6 +202,26 @@ def api_fullxml():
   return json_response(data)
 ######################
 
+#####  /RefundFullXML  #####
+@app.route('/RefundFullXML', methods = [ 'POST' ])
+def api_refundfullxml():
+  result = False
+  if request.headers['Content-Type'] != 'application/json':
+    return json_response({}, status=400)
+  r_json = request.get_json()
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  payment = parse_refund_xml(r_json['XML'])
+  data = {}
+  if payment:
+    if payment['type'] == 'platron':
+      data['Signature'] = payment['sig']
+      data['Salt'] = payment['salt']
+      result = refund_payment(payment)
+  data['Result'] = result
+  return json_response(data)
+######################
+
 #####   /Auth   #####
 @app.route('/Auth', methods = [ 'GET', 'POST' ])
 def api_auth():
@@ -272,6 +293,38 @@ def api_get_film_id():
     return json_response({},status=401)
   result = get_filmid_by_orderid(r_json['OrderID'])
   return json_response(result, status=200)
+######################
+
+#####  /beginWatch  #####
+@app.route('/beginWatch', methods = [ 'POST' ])
+@app.route('/startWatch', methods = [ 'POST' ])
+def api_begin_watch():
+  if request.headers['Content-Type'] != 'application/json':
+    return json_response({}, status=400)
+  r_json = request.get_json()
+  print "...Begin watch:"
+  pprint(r_json)
+  for param in [ 'IPAddress', 'FilmID', 'Name']:
+    if param not in r_json:
+      return json_response({'error':'Incorrect parameters'}, status=400)
+  result = add_film_watch(r_json)
+  return json_response({'Result':result}, status=200)
+######################
+
+##### /OrderTaxi #####
+@app.route('/OrderTaxi', methods = [ 'POST' ])
+def api_order_taxi():
+  if request.headers['Content-Type'] != 'application/json':
+    return json_response({'error' : 'JSON content needed'}, status=400)
+  r_json = request.get_json()
+  if not user_ok(r_json):
+    return json_response({'error':'Authentication needed'},status=401)
+  for param in [ 'IPAddress', 'Phone', 'Name']:
+    if param not in r_json:
+      return json_response({'error':'Incorrect parameters'}, status=400)
+  result = process_taxi_order(r_json)
+  return json_response({'Result':result}, status=200)
+######################
 
 #####  APPLICATION  #####
 if __name__ == '__main__':

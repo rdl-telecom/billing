@@ -195,6 +195,15 @@ def stop_session(order_id, by_user=False):
           )
   db_disconnect(db)
 
+def unauth_user(db, order_id):
+  res = db_query(db, 'select ip from client_info where client_orders_id=%s'%(order_id), full=True)
+  for line in res:
+      ip = line[0]
+      attempts = 100 # hardcode
+      while not deny_client(ip) and attempts > 0:
+          time.sleep(10)
+          attempts -= 1
+
 def end_session(order_id):
   db = db_connect()
   db_query(db, 'update orders set stop_time=null, end_time=now(), state_id=3, '
@@ -202,14 +211,8 @@ def end_session(order_id):
                'start_time=null '
                'where id=%d'%(order_id), fetch=False, commit=True
           )
-  res = db_query(db, 'select ip from client_info where client_orders_id=%s'%(order_id), full=True)
+  unauth_user(db, order_id)
   db_disconnect(db)
-  for line in res:
-      ip = line[0]
-      attempts = 100 # hardcode
-      while not deny_client(ip) and attempts > 0:
-          time.sleep(10)
-          attempts -= 1
 
 #####
 def get_shop(payment_system=None):
@@ -429,6 +432,23 @@ def update_order(payment_info):
                  %(payment_info['uni_billnumber'], client_id, payment_info['date'], code, payment_info['order_id']),
              commit=True, fetch=False)
     result = True
+  db_disconnect(db)
+  return result
+
+#####
+def refund_payment(payment_info):
+  db = db_connect()
+  result = False
+  pprint(payment_info)
+  try:
+    db_query(db, 'update orders set refund_id="%s", end_time=now(), refund_time="%s", state_id=4 where order_id="%s";'
+                 %(payment_info['refund_id'], payment_info['date'], payment_info['order_id']),
+             commit=True, fetch=False)
+    order_id=int(payment_info['order_id'][8:])
+    unauth_user(db, order_id)
+    result = True
+  except Exception as e:
+    print e
   db_disconnect(db)
   return result
 
@@ -662,8 +682,7 @@ def get_user_subscriptions(ip, ua):
   db = db_connect()
   vip_client = is_vip_client(db, ip, mac)
   if vip_client:
-    # vip client 
-    pass
+    return { "VIP" : True } 
   client_ids = db_query(db, 'select client_id as id from client_info where ip="%s" and mac="%s" group by client_id'%(ip, mac), full=True)
   if client_ids:
     print 'client found', client_ids
@@ -809,6 +828,56 @@ def parse_xml(xml):
 #      result['approval_code'] = new_code()
   return result
 
+#####
+def parse_refund_xml(xml):
+  print 'parse_xml:'
+  try:
+    xml = json.loads(xml2json.xml2json(io.StringIO(xml)).get_json())
+  except:
+    return None
+  result = None
+  if 'request' in xml:                   # Platron
+    platron_res=xml['request']
+    pprint(platron_res)
+    result = {
+      'type' : 'platron',
+      'shop_id' : '00006866',
+      'order_id' : platron_res['pg_order_id'],
+      'sum' : platron_res['pg_amount'],
+      'date' : platron_res['pg_refund_date'],
+      'refund_id' : platron_res['pg_refund_id'],
+	  'salt' : platron_res['pg_salt'],
+	  'sig' : platron_res['pg_sig'],
+    }
+  else:
+    return None
+  return result
+
+def add_film_watch(request_json):
+  result = False
+  pprint(request_json)
+  db = db_connect()
+  ip = request_json['IPAddress']
+  mac = get_mac(ip)
+  film_id = request_json['FilmID']
+  name = request_json['Name']
+  user_agent = request_json.get('UserAgent', None)
+  db_query(db, 'insert into watches (ip, mac, film_id, name) values ("%s", "%s", %s, "%s");'%(ip, mac, film_id, name), commit=True, fetch=False)
+  db_disconnect(db)
+  return { "Result" : result }
+
+def save_taxi_order(data):
+    db = db_connect()
+    db_query(db, 'insert into taxi values ('
+                 '0, now(), "%{direction}", "%{ip}", "%{mac}", "%{vgt_name}", "%{vgt_phone}", "%{vgt_email}", '
+                 '"%{vgt_from}", "%{vgt_dest}", "%{vgt_ctype}", %{vgt_cprice}, "%{vgt_data}", '
+                 '"%{vgt_add}", "%{vgt_add2}", "%{vgt_tab}", "%{vgt_comment}"'
+                 ');'%data, commit=True, fetch=False)
+    db_disconnect(db)
+    pass
+
+
+######################################################
 if __name__ == '__main__':
   #print new_code()
 #  pprint(get_first_data('VIDEOSVC','FILM3'))
