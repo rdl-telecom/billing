@@ -76,6 +76,7 @@ def fill_send_data(r_json):
         'vgt_add2' : r_json.get('AddressTo', None),
         'vgt_name' : r_json.get('Name', None),
         'vgt_email' : r_json.get('Email', None),
+        'vgt_train' : r_json.get('TrainNumber', None),
         'vgt_tab' : r_json.get('TableText', None),
         'vgt_comment' : r_json.get('Comment', None)
     }

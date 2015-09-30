@@ -870,7 +870,7 @@ def save_taxi_order(data):
     db = db_connect()
     db_query(db, 'insert into taxi values ('
                  '0, now(), "%{direction}", "%{ip}", "%{mac}", "%{vgt_name}", "%{vgt_phone}", "%{vgt_email}", '
-                 '"%{vgt_from}", "%{vgt_dest}", "%{vgt_ctype}", %{vgt_cprice}, "%{vgt_data}", '
+                 '"%{vgt_train}", "%{vgt_from}", "%{vgt_dest}", "%{vgt_ctype}", %{vgt_cprice}, "%{vgt_data}", '
                  '"%{vgt_add}", "%{vgt_add2}", "%{vgt_tab}", "%{vgt_comment}"'
                  ');'%data, commit=True, fetch=False)
     db_disconnect(db)
