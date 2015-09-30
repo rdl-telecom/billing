@@ -42,7 +42,7 @@ def format_value(fmt, value):
             result = ''
             if value:
                 conv = MySQLConverter()
-                result = conv.quote(conv.escape(value.encode('utf-8'))).decode('utf-8')
+                result = conv.escape(value.encode('utf-8')).decode('utf-8')
                 if fmt == 'string':
                     result = result[:256]
                 elif fmt == 'text':
