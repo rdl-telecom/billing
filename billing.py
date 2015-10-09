@@ -861,8 +861,10 @@ def add_film_watch(request_json):
   mac = get_mac(ip)
   film_id = request_json['FilmID']
   name = request_json['Name']
+  user_id = request_json.get('UserID', '0')
   user_agent = request_json.get('UserAgent', '')
-  db_query(db, 'insert into watches (ip, mac, film_id, name, ua) values ("%s", "%s", %s, "%s", "%s");'%(ip, mac, film_id, name, user_agent),
+  db_query(db, 'insert into watches (ip, mac, film_id, name, ua, user_id) values ("%s", "%s", %s, "%s", "%s", %s);'
+                    %(ip, mac, film_id, name, user_agent, user_id),
                     commit=True, fetch=False
           )
   db_disconnect(db)

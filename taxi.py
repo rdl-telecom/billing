@@ -36,7 +36,7 @@ def format_value(fmt, value):
         try:
             result = datetime.datetime.strptime(value, datetime_format).strftime(datetime_format)
         except:
-            result = datetime.datetime.now().strftime(datetime_format)
+            result = ''
     else:
         try:
             result = ''
