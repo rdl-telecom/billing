@@ -13,11 +13,10 @@ ids = '(74430,75894,76055,76577,77028,77526,77944,78005,79203,79515,79693,80909,
 
 def get_payments(db, tfrom, tto):
     query = '''select o.id, o.order_id, o.client_id, v.price*100, v.type, v.film_id, v.name, 
-unix_timestamp(o.begin_time), unix_timestamp(o.end_time) 
+unix_timestamp(o.begin_time), unix_timestamp(o.end_time), unix_timestamp(o.payment_time)
 from orders o left join vidimax v on v.id=o.client_films_id
 where o.new_model = 1 and billnumber > 0 and refund_time is null
-and o.id in %s'''%ids
-#and payment_time >= '%s' and payment_time < '%s';'''%(tfrom.strftime(date_fmt), tto.strftime(date_fmt))
+and payment_time >= '%s' and payment_time < '%s';'''%(tfrom.strftime(date_fmt), tto.strftime(date_fmt))
     res = db_query(db, query, full=True)
     return res
     
@@ -49,8 +48,9 @@ and o.id = %s and w.watch_time between o.begin_time and o.end_time;'''%order_id
 
 def generate_report(time_from, time_to):
     result = []
+    print time_from, '--', time_to
     db = db_connect()
-    for oid, order, client, price, ptype, film_id, name, start, end in get_payments(db, time_from, time_to):
+    for oid, order, client, price, ptype, film_id, name, start, end, payment in get_payments(db, time_from, time_to):
         tariff_id = 0
         if ptype == 'svod':
             tariff_id = film_id
@@ -60,27 +60,38 @@ def generate_report(time_from, time_to):
             "price": price,
             "type": ptype,
             "tariffId": tariff_id, 
+            "paymentDate" : payment,
             "startDate": start,
             "stopDate": end,
             "watches": get_watches(db, oid, ptype)
         }
+        if ptype == 'tvod':
+            payment['contentId'] = film_id
         result.append(payment)
     db_disconnect(db)
+    print time_from, '--', time_to
     return result
 
 
 
 if __name__ == '__main__':
-    f = datetime.datetime.strptime('2015-09-01 00:00:00', date_fmt)
-    t = datetime.datetime.strptime('2015-10-01 00:00:00', date_fmt)
+    f = datetime.datetime.strptime('2015-10-01 00:00:00', date_fmt)
+    t = datetime.datetime.strptime('2015-10-10 00:00:00', date_fmt)
     r = generate_report(f, t)
+    print r
 
     headers = {'content-type': 'application/json', 'encoding' : 'utf-8'}
     payload = json.dumps(r, ensure_ascii=False, sort_keys=True).encode('utf-8')
-    response = requests.post(report_url, data=payload, headers=headers)
+    text = json.dumps(r, ensure_ascii=False, indent=4, sort_keys=True)
+    import io
+    with io.open('filename', 'w', encoding='utf8') as json_file:
+        json_file.write(unicode(text))
+    print text
+
 #    response = requests.post(report_url, auth=(report_username, report_password), data=payload, headers=headers)
 
-    print response.status_code
-    print response.headers
-    print response.text
-    print response.json
+#    if response.status_code == 200:
+#        print response.json()['resultCode'], response.json()['resultMessage']
+#    else:
+#        print response.status_code
+#        print response.text
