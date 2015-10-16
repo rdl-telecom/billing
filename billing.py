@@ -516,7 +516,7 @@ def get_client_codes(direction, phone, ip):
   result = {}
   try:
     mac = get_mac(ip).replace(':','')
-    if mac == '0'*12:
+    if settings.check_mac and mac == '0'*12:
       raise ValueError('No MAC address for %s'%(ip))
     db = db_connect()
     res = db_query(db, "select o.code, s.state, "
@@ -591,12 +591,12 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
     mac = get_mac(ip).replace(':','') or '000000000000'
     print mac
     if not film:
-      result = db_query(db, "insert into orders (shop_id, tariff_id, first_mac) values ( %s, %s , x'%s');"%(shop, tariff, mac), fetch=False, commit=True, lastrow=True)
+      result = db_query(db, "insert into orders (shop_id, tariff_id, first_mac, first_ip) values ( %s, %s , x'%s', '%s');"%(shop, tariff, mac, ip), fetch=False, commit=True, lastrow=True)
     else:
-      query = "insert into orders (shop_id, tariff_id, client_films_id, first_mac) values (%s, %s, %s, x'%s');"
+      query = "insert into orders (shop_id, tariff_id, client_films_id, first_mac, first_ip) values (%s, %s, %s, x'%s', '%s');"
       if new_model:
-        query = "insert into orders (shop_id, tariff_id, client_films_id, new_model, first_mac) values (%s, %s, %s, 1, x'%s');" # hardcode
-      result = db_query(db, query%(shop, tariff, film, mac), fetch=False, commit=True, lastrow=True)
+        query = "insert into orders (shop_id, tariff_id, client_films_id, new_model, first_mac, first_ip) values (%s, %s, %s, 1, x'%s', '%s');" # hardcode
+      result = db_query(db, query%(shop, tariff, film, mac, ip), fetch=False, commit=True, lastrow=True)
       if new_model:
         update_order_id(db, film, result)
     if direction:
