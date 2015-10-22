@@ -9,3 +9,4 @@ needed packages:
   --allow-external mysql-connector-python mysql-connector-python
   requests
   smpplib
+  flup
