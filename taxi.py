@@ -14,6 +14,7 @@ send_format = {
     'vgt_phone' : 'phone',
     'vgt_data' : 'datetime',
     'vgt_comment' : 'bigtext',
+    'accept_offer' : 'boolean',
     'default' : 'string'
 }
 
@@ -37,6 +38,8 @@ def format_value(fmt, value):
             result = datetime.datetime.strptime(value, datetime_format).strftime(datetime_format)
         except:
             result = ''
+    elif fmt == 'boolean':
+        result = str(value)
     else:
         try:
             result = ''
@@ -77,7 +80,8 @@ def fill_send_data(r_json):
         'vgt_name' : r_json.get('Name', None),
         'vgt_email' : r_json.get('Email', None),
         'vgt_tab' : r_json.get('TableText', None),
-        'vgt_comment' : r_json.get('Comment', None)
+        'vgt_comment' : r_json.get('Comment', None),
+        'accept_offer' : 1 if 'AcceptOferta' in r_json and r_json['AcceptOferta'] == 'on' else 0
     }
     return result
 
@@ -106,6 +110,7 @@ def process_taxi_order(r_json):
             format_send_data(data)
             client_info.update(data)
             save_taxi_order(client_info)
+            del client_info['accept_offer']
             print data
             if send_data(data):
                 result = True

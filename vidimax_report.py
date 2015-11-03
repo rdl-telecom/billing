@@ -76,7 +76,7 @@ def generate_report(time_from, time_to):
 
 if __name__ == '__main__':
     f = datetime.datetime.strptime('2015-10-01 00:00:00', date_fmt)
-    t = datetime.datetime.strptime('2015-10-10 00:00:00', date_fmt)
+    t = datetime.datetime.strptime('2015-11-01 00:00:00', date_fmt)
     r = generate_report(f, t)
     print r
 
@@ -87,11 +87,12 @@ if __name__ == '__main__':
     with io.open('filename', 'w', encoding='utf8') as json_file:
         json_file.write(unicode(text))
     print text
+    
+#    raise SystemExit 
+    response = requests.post(report_url, auth=(report_username, report_password), data=payload, headers=headers)
 
-#    response = requests.post(report_url, auth=(report_username, report_password), data=payload, headers=headers)
-
-#    if response.status_code == 200:
-#        print response.json()['resultCode'], response.json()['resultMessage']
-#    else:
-#        print response.status_code
-#        print response.text
+    if response.status_code == 200:
+        print response.json()['resultCode'], response.json()['resultMessage']
+    else:
+        print response.status_code
+        print response.text
