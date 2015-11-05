@@ -1,6 +1,6 @@
 #coding: utf-8
 import requests
-from settings import taxi_url, taxi_pid
+from settings import taxi_url, taxi_pid, testing
 from billing import save_taxi_order
 from mac import get_mac
 import datetime
@@ -112,7 +112,10 @@ def process_taxi_order(r_json):
             save_taxi_order(client_info)
             del client_info['accept_offer']
             print data
-            if send_data(data):
+            if not testing:
+                if send_data(data):
+                    result = True
+            else:
                 result = True
     except Exception as e:
         print 'process_taxi_order: exception: %s'%e
