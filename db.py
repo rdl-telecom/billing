@@ -8,9 +8,10 @@ def db_connect():
 def db_disconnect(db):
   return db.close()
 
-def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
+def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False, quiet=False):
   cursor = db.cursor()
-  pprint(query)
+  if not quiet:
+    pprint(query)
   cursor.execute(query)
   result = None
   if commit:
@@ -22,6 +23,7 @@ def db_query(db, query, fetch=True, full=False, commit=False, lastrow=False):
       result = cursor.fetchone()
   if lastrow:
     result = cursor.lastrowid
-  pprint(result)
+  if not quiet:
+    pprint(result)
   cursor.close()
   return result

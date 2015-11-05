@@ -31,6 +31,9 @@ def send_sms(name, queue):
       sleep(random.randint(1,5))
       continue
 
+    print
+    print '-'*95
+    print
     [ order_id, phone, code, attempt ] = queue.get()
     queue.task_done()
     sleep(attempt*10)
@@ -78,6 +81,11 @@ def send_sms(name, queue):
       sms_sent(order_id) # status = 2 - sms sent
       print ' SMS is sent'
 
+    print
+    print '-'*95
+    print
+
+
 def shutdown(signum, frame):
   print 'Shutting down...'
   if threading.active_count() > 1:
@@ -90,8 +98,16 @@ def shutdown(signum, frame):
 -----------------------------------------------------------------------------------------------
     ATTENTION!!! SMS queue is not empty! Don't forget to change SMS status in base manually
 -----------------------------------------------------------------------------------------------
+
+Found these values in queue:
+
 """
-  print 'Stopped'
+    while not sms_queue.empty():
+      print sms_queue.get()
+      sms_queue.task_done()
+  print
+  print '-'*95
+  print '\nStopped'
   sys.exit(0)
 
 if __name__ == '__main__':
@@ -100,9 +116,12 @@ if __name__ == '__main__':
   print 'Started'
   for i in range(4):
     name = '-'.join(('SMSer-Thread',str(i)))
+    print 'Starting %s...'%name
     thread = threading.Thread(name=name, target=send_sms, args=(name, sms_queue))
     thread.setDaemon(True)
     thread.start()
+  print '-'*95
+  print
   sleep(1)
   while True:
       items = get_phones_to_sms()
