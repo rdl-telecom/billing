@@ -501,7 +501,7 @@ def add_vip_client(db, code, ip, mac):
 def get_phones_to_sms():
   db = db_connect()
   result = db_query(db, 'select ords.id, cl.phone, ords.code from orders ords left join clients cl on cl.id = client_id '
-                        'where (sms_sent = 0 or (sms_sent = 1 and state_id = 10 and unix_timestamp(now()) - unix_timestamp(payment_time) between 900 and 3600)) '
+                        'where (sms_sent = 0 or (sms_sent = 1 and unix_timestamp(now()) - unix_timestamp(payment_time) > 600)) '
                         'and code <> "" order by payment_time;', full=True
                    )
   db_disconnect(db)
