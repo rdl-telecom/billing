@@ -89,7 +89,9 @@ def api_old_orderid():
 
   film_id = r_json.get('FilmID', None)
   payment_system = r_json.get('Shop', default_shop).upper()
-  direction = r_json.get('Direction', None).upper()
+  direction = r_json.get('Direction', None)
+  if direction:
+	  direction = direction.upper()
   ip = r_json.get('IPAddress', None)
 
   data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction, ip=ip)
