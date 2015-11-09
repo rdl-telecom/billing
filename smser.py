@@ -7,127 +7,90 @@
 import sys
 import traceback
 import signal
-import Queue
 import smpplib
 import threading
 import settings
 from time import sleep
 import datetime
-from billing import get_phones_to_sms, sms_sent
 import random
+from service.amqp import Publisher, Consumer
+import logging
+import json
+
+logger = logging.getLogger('smser')
+
+NOT_SENT=0
+SENDING=1
+SENT=2
+FAILED=3
 
 #############################
 
-sms_queue = Queue.Queue(maxsize=0)
 exit_event = threading.Event()
 
 #############################
-def send_sms(name, queue):
-  print name, 'started'
-  while True:
-    if exit_event.is_set():
-      break
-    if queue.empty():
-      sleep(random.randint(1,5))
-      continue
-
-    print
-    print '-'*95
-    print
-    [ order_id, phone, code, attempt ] = queue.get()
-    queue.task_done()
-    sleep(attempt*10)
-    text = (settings.sms_text%(code))
+def on_new_message(message):
+    [ oid, phone, code ] = json.loads(message.body)
+    message.ack()
+    publisher = Publisher(settings.sms_status_settings)
+    text = settings.sms_text%code
+    encoding_flag = 0
+    msg_type_flag = 0
+    attempt = 0
     sent = False
-    print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' > ' + name + ': sms to ' + phone + ' with code "' + code + '". attempt #' + str(attempt+1)
-  
-    try:
-      encoding_flag = 0
-      msg_type_flag = 0
-      sms_var = random.randint(0,1)
-      client = smpplib.client.Client(settings.smpp_hosts[sms_var]['host'], settings.smpp_hosts[sms_var]['port'])
-      client.connect()
-      client.bind_transmitter(system_id=settings.smpp_user['username'], password=settings.smpp_user['password'])
-      read_pdu = client.send_message(
-          source_addr_ton = 5,
-          source_addr_npi = 1,
-          source_addr = settings.phone_number.encode('utf-8'),
-          dest_addr_ton = 1,
-          dest_addr_npi = 1,
-          destination_addr = phone.encode('utf-8'),
-          short_message = text.encode('utf-8'),
-          data_coding = encoding_flag,
-          esm_class = msg_type_flag,
-          registered_delivery = True
-      )
-      msg_id = read_pdu.message_id
-      status = read_pdu.status
-      if status == 0 and msg_id:
-        sent = True
-      else:
-        raise Exception('sms was not sent. status = %d'%status)
-    except Exception as e:
-      print e
-      traceback.print_exc(file=sys.stdout)
-      if attempt < 4:
-        print 'SMS was not sent. Requeuing it.'
-        queue.put([order_id, phone, code, attempt + 1])
-      else:
-        print 'Number of attempts is exceeded. Marking as "FAILED"'
-        sms_sent(order_id, 3) # status = 3 - failed
-        continue
-
+    print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' > ' + ': sms to ' + phone + ' with code "' + code + '". attempt #' + str(attempt+1)
+    publisher.publish([oid, SENDING])
+    state = FAILED
+    sms_var=0
+    while not sent:
+        try:
+            if attempt >= 5:
+                sms_var += 1
+                if sms_var >= len(settings.smpp_hosts):
+                    break
+                else:
+                    attempts = 0
+            sleep(attempt*5)
+            client = smpplib.client.Client(settings.smpp_hosts[sms_var]['host'], settings.smpp_hosts[sms_var]['port'])
+            client.connect()
+            client.bind_transmitter(system_id=settings.smpp_user['username'], password=settings.smpp_user['password'])
+            read_pdu = client.send_message(
+                source_addr_ton = 5,
+                source_addr_npi = 1,
+                source_addr = settings.phone_number.encode('utf-8'),
+                dest_addr_ton = 1,
+                dest_addr_npi = 1,
+                destination_addr = phone.encode('utf-8'),
+                short_message = text.encode('utf-8'),
+                data_coding = encoding_flag,
+                esm_class = msg_type_flag,
+                registered_delivery = True
+            )
+            msg_id = read_pdu.message_id
+            status = read_pdu.status
+            if status == 0 and msg_id:
+                sent = True
+        except Exception as e:
+            print 'Error occured while sending message'
+            traceback.print_exc(file=sys.stdout)
+        attempt += 1
     if sent:
-      sms_sent(order_id) # status = 2 - sms sent
-      print ' SMS was sent'
+        state = SENT
+    publisher.publish([oid, state])
 
-    print
-    print '-'*95
-    print
-
-
-def shutdown(signum, frame):
-  print 'Shutting down...'
-  if threading.active_count() > 1:
-    exit_event.set()
-  while threading.active_count() > 1:
-    print '  Waiting for threads (%d remained)'%(threading.active_count() - 1)
-    sleep(1)
-  if not sms_queue.empty():
-    print """
------------------------------------------------------------------------------------------------
-    ATTENTION!!! SMS queue is not empty! Don't forget to change SMS status in base manually
------------------------------------------------------------------------------------------------
-
-Found these values in queue:
-
-"""
-    while not sms_queue.empty():
-      print sms_queue.get()
-      sms_queue.task_done()
-  print
-  print '-'*95
-  print '\nStopped'
-  sys.exit(0)
+def consumer():
+    consumer = Consumer(settings.sms_send_settings)
+    consumer.on_message = on_new_message
+    consumer.start()
 
 if __name__ == '__main__':
-  signal.signal(signal.SIGTERM, shutdown)
-  signal.signal(signal.SIGINT, shutdown)
   print 'Started'
-  for i in range(4):
-    name = '-'.join(('SMSer-Thread',str(i)))
-    print 'Starting %s...'%name
-    thread = threading.Thread(name=name, target=send_sms, args=(name, sms_queue))
-    thread.setDaemon(True)
-    thread.start()
+  consumers = [ threading.Thread(name='SMSConsumer-%d'%x, target=consumer) for x in range(4) ]
+  for consumer in consumers:
+    print 'Starting %s...'%consumer.name
+    consumer.setDaemon(True)
+    consumer.start()
   print '-'*95
   print
-  sleep(1)
-  while True:
-      items = get_phones_to_sms()
-      for item in items:
-        sms = list(item) + [ 0 ]
-        print sms
-        sms_queue.put(sms)
-        sms_sent(item[0], status=1)  # 1 - sms scheduled to send
-      sleep(3)
+  for consumer in consumers:
+    consumer.join()

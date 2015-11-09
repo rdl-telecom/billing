@@ -17,8 +17,10 @@ from icomera_auth import auth_client, deny_client
 # local imports
 import settings
 import tariffs
+from service.amqp import Publisher
 
 from pprint import pprint
+
 
 ################################
 #####  INTERNAL FUNCTIONS  #####
@@ -432,6 +434,8 @@ def update_order(payment_info):
                  %(payment_info['uni_billnumber'], client_id, payment_info['date'], code, payment_info['order_id']),
              commit=True, fetch=False)
     result = True
+    sms_publisher = Publisher(settings.sms_send_settings)
+    sms_publisher.publish([get_order_id(payment_info['order_id']), payment_info['phone'], code ])
   db_disconnect(db)
   return result
 

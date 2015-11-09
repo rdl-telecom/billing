@@ -16,6 +16,10 @@ class AMQPAgent(object):
         self._routing_key = settings.get('routing_key', None)
         self._content_type = settings.get('content_type', 'application/json')
 
+        self._connection = None
+        self._exchange = None
+        self._queue = None
+
         self.prepare()
 
     def __del__(self):
@@ -77,9 +81,9 @@ class Publisher(AMQPAgent):
 
     def message_handler(self, message):
         if message.publish(self._exchange_name, self._routing_key):
-            logger.info('Message was successfully handled')
+            logger.info('Message was successfully added to queue')
         else:
-            logger.error('Error occured while message was processed')
+            logger.error('Error occured while message was queued')
 
     def publish(self, body, properties=None):
         if not properties:
