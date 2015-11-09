@@ -6,6 +6,7 @@ import datetime
 import json
 import requests
 from settings import report_url, report_username, report_password
+import sys
 
 date_fmt = '%Y-%m-%d %H:%M:%S'
 
@@ -75,20 +76,27 @@ def generate_report(time_from, time_to):
 
 
 if __name__ == '__main__':
-    f = datetime.datetime.strptime('2015-10-01 00:00:00', date_fmt)
-    t = datetime.datetime.strptime('2015-11-01 00:00:00', date_fmt)
+    if len(sys.argv) < 2:
+        print """
+Usage:
+    %s YYYY-MM-DD
+        YYYY-MM-DD - report day
+"""%sys.argv[0]
+        sys.exit(0)
+
+    report_date = sys.argv[1]
+    f = datetime.datetime.strptime('%s01 00:00:00'%report_date[:-2], date_fmt)
+    t = datetime.datetime.strptime('%s 00:00:00'%report_date, date_fmt)
     r = generate_report(f, t)
-    print r
 
     headers = {'content-type': 'application/json', 'encoding' : 'utf-8'}
     payload = json.dumps(r, ensure_ascii=False, sort_keys=True).encode('utf-8')
     text = json.dumps(r, ensure_ascii=False, indent=4, sort_keys=True)
     import io
-    with io.open('filename', 'w', encoding='utf8') as json_file:
+    with io.open('/var/log/lighttpd/vidimax_report_%s.json'%report_date, 'w', encoding='utf8') as json_file:
         json_file.write(unicode(text))
     print text
     
-#    raise SystemExit 
     response = requests.post(report_url, auth=(report_username, report_password), data=payload, headers=headers)
 
     if response.status_code == 200:
