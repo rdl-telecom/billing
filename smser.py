@@ -65,21 +65,21 @@ def send_sms(name, queue):
       if status == 0 and msg_id:
         sent = True
       else:
-        raise Exception('sms not sent. status = %d'%status)
+        raise Exception('sms was not sent. status = %d'%status)
     except Exception as e:
       print e
       traceback.print_exc(file=sys.stdout)
       if attempt < 4:
-        print 'SMS is not sent. Requeuing it.'
+        print 'SMS was not sent. Requeuing it.'
         queue.put([order_id, phone, code, attempt + 1])
       else:
-        print 'Number of attempts is exceeded. Marking as "NO MORE TRIES"'
-        sms_sent(order_id, 3)
+        print 'Number of attempts is exceeded. Marking as "FAILED"'
+        sms_sent(order_id, 3) # status = 3 - failed
         continue
 
     if sent:
       sms_sent(order_id) # status = 2 - sms sent
-      print ' SMS is sent'
+      print ' SMS was sent'
 
     print
     print '-'*95
