@@ -85,7 +85,7 @@ def consumer():
 
 if __name__ == '__main__':
   print 'Started'
-  consumers = [ threading.Thread(name='SMSConsumer-%d'%x, target=consumer) for x in range(4) ]
+  consumers = [ threading.Thread(name='SMSConsumer-%d'%x, target=consumer) for x in range(settings.sms_senders) ]
   for consumer in consumers:
     print 'Starting %s...'%consumer.name
     consumer.setDaemon(True)
