@@ -1,6 +1,6 @@
 # billing
 
-needed packages:
+dependencies:
   flask
   xmlutils
   ipaddress
@@ -10,3 +10,4 @@ needed packages:
   requests
   smpplib
   flup
+  rabbitpy
