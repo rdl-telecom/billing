@@ -17,12 +17,19 @@ from settings import logs_dir, default_shop
 import tariffs
 from taxi import process_taxi_order
 
-from sms_processor import start_consume
-start_consume()
+from sms_processor import start_consume, sms_status_consumers
 
-app = Flask(__name__)
-app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
-app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')]) 
+def create_app():
+    app = Flask(__name__)
+
+    app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
+    app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')])
+
+    start_consume(sms_status_consumers)
+
+    return app
+
+app = create_app()
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s %(name)-20s %(levelname)-8s %(message)s',
