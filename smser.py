@@ -79,9 +79,17 @@ def on_new_message(message):
     publisher.publish([oid, state])
 
 def consumer():
-    consumer = Consumer(settings.sms_send_settings)
-    consumer.on_message = on_new_message
-    consumer.start()
+    while True:
+        try:
+            consumer = Consumer(settings.sms_send_settings)
+            consumer.on_message = on_new_message
+            consumer.start()
+        except KeyboardInterrupt:
+            print 'Control-C detected. Stopping SMS consumer'
+            break
+        except Exception as e:
+            print 'SMSer exception: %s'%str(e)
+            print 'Restarting consumer'
 
 if __name__ == '__main__':
   print 'Started'

@@ -14,8 +14,16 @@ class StatusConsumer(Consumer):
         message.ack()
 
 def process():
-    sc = StatusConsumer()
-    sc.start()
+    while True:
+        try:
+            sc = StatusConsumer()
+            sc.start()
+        except KeyboardInterrupt:
+            print 'Control-C detected. Stopping StatusConsumer'
+            break
+        except Exception as e:
+            print 'SMS status queue consumer trouble: %e'%str(e)
+        print 'SMS status queue consumer restarting'
 
 sms_status_consumers = [ Thread(name='StatusComsumer-%d'%x, target=process) for x in range(4) ]
 
