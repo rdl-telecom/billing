@@ -18,25 +18,20 @@ import tariffs
 from taxi import process_taxi_order
 
 from sms_processor import start_consume, sms_status_consumers
+start_consume(sms_status_consumers)
 
-def create_app():
-    app = Flask(__name__)
+app = Flask(__name__)
 
-    app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
-    app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')])
+app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
+app.wsgi_app = HeaderRewriterFix(app.wsgi_app, remove_headers=['Date'], add_headers=[('X-Powered-By', 'WSGI'), ('Server', 'Noname Server')])
 
-    start_consume(sms_status_consumers)
-
-    return app
-
-app = create_app()
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s %(name)-20s %(levelname)-8s %(message)s',
-#					datefmt='%Y-%m-%d %H:%M:%S',
+#                    datefmt='%Y-%m-%d %H:%M:%S',
 #                    filename=logs_dir+'/app.log',
 #                    filemode='aw')
-#logger = logging.getLogger('billing.app')
+logger = logging.getLogger('billing.app')
 
 #log_handler = logging.FileHandler(logs_dir + '/app.debug.log')
 #app.logger.addHandler(log_handler)
