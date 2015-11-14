@@ -100,5 +100,9 @@ if __name__ == '__main__':
     consumer.start()
   print '-'*95
   print
+
+  from sms_processor import start_consume, sms_status_consumers
+  start_consume(sms_status_consumers)
+
   for consumer in consumers:
     consumer.join()

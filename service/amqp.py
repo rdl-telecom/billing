@@ -23,9 +23,18 @@ class AMQPAgent(object):
         self.prepare()
 
     def __del__(self):
-        self._queue.unbind(self._exchange, self._routing_key)
-        self._channel.close()
-        self._connection.close()
+        try:
+            self._queue.unbind(self._exchange, self._routing_key)
+        except:
+            pass
+        try:
+            self._channel.close()
+        except:
+            pass
+        try:
+            self._connection.close()
+        except:
+            pass
 
     def prepare(self):
         self.connect()
@@ -58,11 +67,13 @@ class Consumer(AMQPAgent):
         super(Consumer, self).__init__(settings)
 
     def __del__(self):
-        self._queue.stop_consuming()
+        try:
+            self._queue.stop_consuming()
+        except:
+            pass
         super(Consumer, self).__del__()
         
     def on_message(self, message):
-        import time
         message.pprint(True)
         message.ack()
 
