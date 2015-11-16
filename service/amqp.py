@@ -78,8 +78,12 @@ class Consumer(AMQPAgent):
         message.ack()
 
     def start(self):
-        for message in self._queue:
-            self.on_message(message)
+        try:
+            for message in self._queue:
+                self.on_message(message)
+        except rabbitpy.exceptions.ConnectionResetException as error:
+            logging.error('SMS status queue consumer trouble: %s'%error)
+            raise Exception('connection reset')
 
 
 class Publisher(AMQPAgent):
