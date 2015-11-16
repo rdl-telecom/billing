@@ -43,12 +43,12 @@ def on_new_message(message):
     sms_var=0
     while not sent:
         try:
-            if attempt >= 5:
+            if attempt > 5:
                 sms_var += 1
                 if sms_var >= len(settings.smpp_hosts):
                     break
                 else:
-                    attempts = 0
+                    attempt = 0
             sleep(attempt*5)
             client = smpplib.client.Client(settings.smpp_hosts[sms_var]['host'], settings.smpp_hosts[sms_var]['port'])
             client.connect()

@@ -24,8 +24,7 @@ def process():
             logging.warning('Control-C detected. Stopping StatusConsumer')
             break
         except Exception as e:
-            logging.error('Consumer creation error: %s'%e)
-            time.sleep(10)
+            logging.error('Consumer error: %s'%e)
             continue
         time.sleep(10)
         logging.info('SMS status queue consumer restarting')
