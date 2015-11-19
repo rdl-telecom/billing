@@ -110,7 +110,6 @@ def process_taxi_order(r_json):
             format_send_data(data)
             client_info.update(data)
             save_taxi_order(client_info)
-            del client_info['accept_offer']
             print data
             if not testing:
                 if send_data(data):

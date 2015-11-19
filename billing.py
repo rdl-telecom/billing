@@ -881,7 +881,7 @@ def save_taxi_order(data):
     query = '''insert into taxi values (
             0, now(), "%(direction)s", "%(ip)s", "%(mac)s", "%(vgt_name)s", "%(vgt_phone)s", "%(vgt_email)s",
             "%(train)s", "%(vgt_from)s", "%(vgt_dest)s", "%(vgt_ctype)s", %(vgt_cprice)s, "%(vgt_data)s",
-            "%(vgt_add)s", "%(vgt_add2)s", "%(vgt_tab)s", "%(vgt_comment)s, %{accept_offer}"
+            "%(vgt_add)s", "%(vgt_add2)s", "%(vgt_tab)s", "%(vgt_comment)s", %(accept_offer)s
             );'''%data
     print query
     db_query(db, query, commit=True, fetch=False)
