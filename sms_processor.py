@@ -24,14 +24,22 @@ def process():
             logging.warning('Control-C detected. Stopping StatusConsumer')
             break
         except Exception as e:
+<<<<<<< HEAD
+            logging.error('SMS status queue consumer trouble: %s'%str(e))
+        time.sleep(10)
+        logging.info('SMS status queue consumer restarting')
+
+#sms_status_consumers = [ Process(name='StatusComsumer-%d'%x, target=process) for x in range(number) ]
+=======
             logging.error('Consumer error: %s'%e)
             continue
         time.sleep(10)
         logging.info('SMS status queue consumer restarting')
 
+>>>>>>> e5417d8422e39120f1f1202ab9dec63bb5a85ff1
 sms_status_consumers = [ Thread(name='StatusComsumer-%d'%x, target=process) for x in range(number) ]
 
 def start_consume(consumers):
     for c in consumers:
-        c.daemon = True
+        c.setDaemon(True)
         c.start()

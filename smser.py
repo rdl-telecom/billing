@@ -80,8 +80,8 @@ def on_new_message(message):
 
 def consumer():
     while True:
+        consumer = Consumer(settings.sms_send_settings)
         try:
-            consumer = Consumer(settings.sms_send_settings)
             consumer.on_message = on_new_message
             consumer.start()
         except KeyboardInterrupt:
