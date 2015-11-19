@@ -31,7 +31,6 @@ exit_event = threading.Event()
 #############################
 def on_new_message(message):
     [ oid, phone, code ] = json.loads(message.body)
-    message.ack()
     publisher = Publisher(settings.sms_status_settings)
     text = settings.sms_text%code
     encoding_flag = 0
@@ -44,12 +43,12 @@ def on_new_message(message):
     sms_var=0
     while not sent:
         try:
-            if attempt >= 5:
+            if attempt > 5:
                 sms_var += 1
                 if sms_var >= len(settings.smpp_hosts):
                     break
                 else:
-                    attempts = 0
+                    attempt = 0
             sleep(attempt*5)
             client = smpplib.client.Client(settings.smpp_hosts[sms_var]['host'], settings.smpp_hosts[sms_var]['port'])
             client.connect()
@@ -76,6 +75,7 @@ def on_new_message(message):
         attempt += 1
     if sent:
         state = SENT
+    message.ack()
     publisher.publish([oid, state])
 
 def consumer():
@@ -100,5 +100,9 @@ if __name__ == '__main__':
     consumer.start()
   print '-'*95
   print
-  for consumer in consumers:
+
+  from sms_processor import start_consume, sms_status_consumers
+  start_consume(sms_status_consumers)
+
+  for consumer in consumers + sms_status_consumers:
     consumer.join()
