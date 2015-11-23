@@ -1,11 +1,11 @@
 # coding: utf-8
 from hashlib import md5
 from db import db_connect, db_query, db_disconnect
-
-salt = 'securemonkey^%'
+from settings import secret_key as salt
 
 def check_sign(rj):
   sign = md5(':'.join((rj['id'], rj['type'], rj['price'], rj['ts'], salt)))
+  print sign.hexdigest(), '==', rj['sign']
   return sign.hexdigest() == rj['sign']
 
 def add_film_info(rj):

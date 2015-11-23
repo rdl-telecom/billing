@@ -871,6 +871,7 @@ def add_film_watch(request_json):
                     %(ip, mac, film_id, name, user_agent, user_id),
                     commit=True, fetch=False
           )
+  result = True
   db_disconnect(db)
   return { "Result" : result }
 

@@ -317,7 +317,7 @@ def api_begin_watch():
     if param not in r_json:
       return json_response({'error':'Incorrect parameters'}, status=400)
   result = add_film_watch(r_json)
-  return json_response({'Result':result}, status=200)
+  return json_response(result, status=200)
 ######################
 
 ##### /OrderTaxi #####
