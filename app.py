@@ -271,6 +271,7 @@ def api_get_subscriptions():
   user_agent = ''
   if 'UserAgent' in r_json:
     user_agent = r_json['UserAgent']
+
   result = get_user_subscriptions(r_json['IPAddress'], user_agent)
   return json_response(result, status=200)
 

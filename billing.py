@@ -359,15 +359,22 @@ def get_client_info(db, r_json):
     state = 0
   elif state == 3:
     return None
+  url = None
+  ext_oid = None
   if 'FilmID' in r_json: # FilmID checking
-    if not is_new_model(db, order_id):
+    new_model = is_new_model(db, order_id)
+    if not new_model:
       res = db_query(db, 'select id from orders where id = %d and client_films_id = %s'%(order_id, r_json['FilmID']))
     else:
-      res = db_query(db, 'select o.id from orders o cross join vidimax v on o.id = v.order_id and o.client_films_id = v.id where o.id = %d'
+      res = db_query(db, 'select o.id, v.success_url, v.external_order_id \
+                          from orders o cross join vidimax v on o.id = v.order_id and o.client_films_id = v.id where o.id = %d'
                           %(order_id)
                     )
     if not res: # so this order is not for this film
       return None
+    if new_model:
+      url = res[1]
+      ext_oid = res[2]
   else: # checking for not film
     res = db_query(db, 'select id from orders where id = %d and client_films_id = 0'%(order_id))
     if not res: # so this order is for film not for internet
@@ -388,6 +395,10 @@ def get_client_info(db, r_json):
     'state' : state,
     'changed' : flag
   }
+  if url:
+    result['url'] = url
+  if ext_oid:
+    result['external_order_id'] = ext_oid
   return result
 
 def update_client_info(db, client_info, logout):
@@ -434,8 +445,9 @@ def update_order(payment_info):
                  %(payment_info['uni_billnumber'], client_id, payment_info['date'], code, payment_info['order_id']),
              commit=True, fetch=False)
     result = True
-    sms_publisher = Publisher(settings.sms_send_settings)
-    sms_publisher.publish([get_order_id(payment_info['order_id']), payment_info['phone'], code ])
+    if not setting.testing:
+      sms_publisher = Publisher(settings.sms_send_settings)
+      sms_publisher.publish([get_order_id(payment_info['order_id']), payment_info['phone'], code ])
   db_disconnect(db)
   return result
 
@@ -670,10 +682,11 @@ def get_film_session(request_json):
 def get_user_subscriptions(ip, ua):
   def get_subs_list(db, client_id):
     subs = []
-    res = db_query(db, 'select client_films_id from orders where client_id=%s and new_model=1 and state_id=0;'%(client_id), full=True)
+    res = db_query(db, 'select order_id, client_films_id, first_ip, direction \
+                        from orders where client_id=%s and new_model=1 and state_id=0;'%(client_id), full=True)
     if res:
-      for [ film_id ] in res:
-        subs_info = get_subs_info(db, film_id)
+      for [ order_id, film_id, first_ip, direction ] in res:
+        subs_info = get_subs_info(db, film_id, (first_ip, direction))
         if subs_info not in subs:
           subs.append(subs_info)
     return subs
@@ -759,10 +772,12 @@ def get_session(request_json, update=False):
         'Logout' : client_info['state']
       }
       if is_film:
-        result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
-        if int(request_json['FilmID']) == 694: # hardcode
-          result['URL'] = settings.vidimax_base
-#        result['URL'] = settings.vidimax_base + '/#play/' + request_json['FilmID']
+        if 'external_order_id' in client_info: # not vidimax
+          result['URL'] = client_info.get('url', settings.vidimax_base)
+        else:
+          result['URL'] = settings.vidimax_base + '/#movie/' + request_json['FilmID']
+          if int(request_json['FilmID']) == 694: # hardcode
+            result['URL'] = settings.vidimax_base
         print result['URL']
       else:
         auth_client(client_info['ip'], client_info['mac'])
