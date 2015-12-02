@@ -87,6 +87,11 @@ Usage:
     report_date = sys.argv[1]
     f = datetime.datetime.strptime('%s01 00:00:00'%report_date[:-2], date_fmt)
     t = datetime.datetime.strptime('%s 00:00:00'%report_date, date_fmt)
+    if f.day == 1:
+        if f.month == 1:
+            f = f.replace(month=12)
+        else:
+            f = f.replace(month=f.month-1)
     r = generate_report(f, t)
 
     headers = {'content-type': 'application/json', 'encoding' : 'utf-8'}
