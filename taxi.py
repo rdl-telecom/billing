@@ -1,10 +1,13 @@
 #coding: utf-8
 import requests
-from settings import taxi_url, taxi_pid, testing
+from settings import taxi_url, taxi_pid, testing, logs_dir
 from billing import save_taxi_order
 from mac import get_mac
 import datetime
 from mysql.connector.conversion import MySQLConverter
+import logging
+
+logger = logging.getLogger('billing.taxi')
 
 datetime_format = '%Y-%m-%d %H:%M:%S'
 
@@ -97,6 +100,7 @@ def send_data(send_data):
 
 def process_taxi_order(r_json):
     result = False
+    logger.debug(str(r_json))
     try:
         print r_json
         if test_phone(r_json):
@@ -118,4 +122,5 @@ def process_taxi_order(r_json):
                 result = True
     except Exception as e:
         print 'process_taxi_order: exception: %s'%e
+        logger.error('process_taxi_order: exception: %s'%e)
     return result
