@@ -2,7 +2,7 @@ import rabbitpy
 import logging
 import threading
 
-log_format = ('%(asctime) -25s %(name) -20s %(levelname) -8s %(funcName)s (line %(lineno)d) : %(message)s')
+#log_format = ('%(asctime) -25s %(name) -20s %(levelname) -8s %(funcName)s (line %(lineno)d) : %(message)s')
 logger = logging.getLogger(__name__)
 
 class AMQPAgent(object):
@@ -96,9 +96,9 @@ class Publisher(AMQPAgent):
 
     def message_handler(self, message):
         if message.publish(self._exchange_name, self._routing_key):
-            logger.info('Message was successfully added to queue')
+            logger.debug('Message was successfully added to queue')
         else:
-            logger.error('Error occured while message was queued')
+            logger.error('Error occured while queuing the message')
 
     def publish(self, body, properties=None):
         if not properties:
