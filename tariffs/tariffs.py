@@ -19,7 +19,8 @@ def get_list_by_service_and_direction(service, direction):
                         where t.service="{0}" and dir.abbr="{1}" order by t.price;'.format(service.upper(), direction.upper()), fetchall=True
                       )
     result = {}
-    for i, name, price, b_ru, b_en, d_ru, d_en in tariffs:
+    i = 1
+    for _, name, price, b_ru, b_en, d_ru, d_en in tariffs:
         result[str(i)] = {
             'Button' : b_ru,
             'Button_EN' : b_en,
@@ -28,6 +29,7 @@ def get_list_by_service_and_direction(service, direction):
             'Description' : d_ru,
             'Description_EN' : d_en
         }
+        i += 1
     return result
 
 def get_descriptions(tariff_id):

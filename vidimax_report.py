@@ -89,7 +89,7 @@ Usage:
     t = datetime.datetime.strptime('%s 00:00:00'%report_date, date_fmt)
     if f.day == 1:
         if f.month == 1:
-            f = f.replace(month=12)
+            f = f.replace(month=12, year=f.year-1)
         else:
             f = f.replace(month=f.month-1)
     r = generate_report(f, t)

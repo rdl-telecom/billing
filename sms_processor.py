@@ -7,31 +7,33 @@ import time
 import json
 import logging
 
+logger = logging.getLogger(__name__)
+
 def on_message(message):
     [ order_id, state ] = json.loads(message.body)
     sms_sent(order_id, state)
     message.ack()
 
 def process():
-    logging.info('Creating consumer...')
     while True:
         try:
             sc = Consumer(status_settings)
             sc.on_message = on_message
-            logging.info('Starting consumer...')
+            logging.info('Starting consumer')
             sc.start()
         except KeyboardInterrupt:
-            logging.warning('Control-C detected. Stopping StatusConsumer')
+            logger.warning('Control-C detected. Stopping StatusConsumer')
             break
         except Exception as e:
-            logging.error('Consumer error: %s'%e)
+            logger.error('Consumer error: %s'%e)
             continue
         time.sleep(10)
-        logging.info('SMS status queue consumer restarting')
+        logger.info('SMS status queue consumer restarting')
 
 sms_status_consumers = [ Thread(name='StatusComsumer-%d'%x, target=process) for x in range(number) ]
 
 def start_consume(consumers):
     for c in consumers:
-        c.daemon = True
+        logger.debug('Creating consumer {}'.format(c.name))
+#        c.daemon = True
         c.start()
