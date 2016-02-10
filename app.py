@@ -30,7 +30,7 @@ app = create_app()
 
 #logging.basicConfig(level=logging.DEBUG,
 #                    format='%(asctime)s %(name)-20s %(levelname)-8s %(message)s',
-#                    datefmt='%Y-%m-%d %H:%M:%S',
+#                    datefmt='%Y-%m-%d %H:%M:%S')
 #                    filename=logs_dir+'/app.log',
 #                    filemode='aw')
 logger = logging.getLogger('billing.app')

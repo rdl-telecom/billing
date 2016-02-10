@@ -1,6 +1,27 @@
 # settings
 settings.py
 
+# test and temp files
+tmp*
+test*
+*.tmp
+*.txt
+
+# generated codes and db fills
+gen_*
+*.sql
+*.csv
+
+# virtual enviroment dirs and files
+bin/
+lib/
+include/
+pip-selfcheck.json
+
+# for local use only
+add_scratches.sh
+__init__.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -95,6 +95,7 @@ class Publisher(AMQPAgent):
         self._app_id = settings.get('app_id', __name__)
 
     def message_handler(self, message):
+        print message
         if message.publish(self._exchange_name, self._routing_key):
             logger.debug('Message was successfully added to queue')
         else:
