@@ -11,7 +11,8 @@ def get_tariff(service, tariff):
     return db.query('select id, price from tariffs_tariff where service="{0}" and name="{1}"'.format(service, tariff))
 
 def get_list_by_service_and_direction(service, direction):
-    tariffs = db.query('select t.id - 1, t.name, t.price, d.button_ru, d.button_en, d.description_ru, d.description_en \
+    tariffs = db.query('select t.id - 1, t.name, t.price, d.button_ru, d.button_en, d.description_ru, \
+                        d.description_en, dt.default\
                         from tariffs_directiontariff dt \
                         left join tariffs_tariff t on dt.tariff_id = t.id \
                         left join tariffs_description d on t.id = d.tariff_id \
@@ -20,14 +21,16 @@ def get_list_by_service_and_direction(service, direction):
                       )
     result = {}
     i = 1
-    for _, name, price, b_ru, b_en, d_ru, d_en in tariffs:
+    for _, name, price, b_ru, b_en, d_ru, d_en, default in tariffs:
+        d = 1 if default else 0
         result[str(i)] = {
             'Button' : b_ru,
             'Button_EN' : b_en,
             'Tariff' : name,
             'Sum' : price,
             'Description' : d_ru,
-            'Description_EN' : d_en
+            'Description_EN' : d_en,
+            'Default' : d
         }
         i += 1
     return result
