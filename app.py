@@ -16,6 +16,7 @@ import logging
 from settings import logs_dir, default_shop
 import tariffs
 from taxi import process_taxi_order
+from trains import get_train
 
 
 def create_app():
@@ -336,6 +337,17 @@ def api_order_taxi():
   result = process_taxi_order(r_json)
   return json_response({'Result':result}, status=200)
 ######################
+
+##### /GetTrain  #####
+@app.route('/GetTrain', methods = [ 'GET' ])
+def api_get_train():
+  r_json = url2json(request.url)
+  if not ('ID' in r_json):
+    return json_response({}, status=400)
+  result = get_train(r_json['ID'])
+  return json_response({ 'Train' : result })
+######################
+
 
 #####  APPLICATION  #####
 if __name__ == '__main__':
