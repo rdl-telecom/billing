@@ -17,6 +17,7 @@ def get_payments(db, tfrom, tto):
 unix_timestamp(o.begin_time), unix_timestamp(o.end_time), unix_timestamp(o.payment_time)
 from orders o left join vidimax v on v.id=o.client_films_id
 where o.new_model = 1 and billnumber > 0 and refund_time is null
+and v.external_order_id is null
 and payment_time >= '%s' and payment_time < '%s';'''%(tfrom.strftime(date_fmt), tto.strftime(date_fmt))
     res = db_query(db, query, full=True)
     return res
