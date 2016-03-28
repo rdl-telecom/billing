@@ -43,7 +43,7 @@ def get_watches(start, end):
         tr = get_train_id((ip, dr))
         result.append(base_line%(oid, typ, tr, date_to_str(pt), dr, nam, pri))
         if rt: # refund
-            result.append(base_line%(oid, typ, tr, date_to_str(rt), dr, nam, -pri))
+            result.append(base_line%(oid, 'refund', tr, date_to_str(rt), dr, nam, -pri))
 
     return '\n'.join(result)
 
@@ -51,7 +51,7 @@ def send_mail(attachment):
     msg = MIMEMultipart()
     msg['Subject'] = 'RDL report'
     msg['From'] = okko_report_from
-    msg['To'] = okko_report_to
+    msg['To'] = ', '.join(okko_report_to)
     msg.preamble = 'See <report.csv> attachment file'
     msg.add_header('Content-Disposition', 'attachment', filename='report.csv')
 #    msg.attach(MIMEText('See report in report.csv attachment file', _subtype='plain'))
@@ -63,7 +63,7 @@ def send_mail(attachment):
         smtp = smtplib.SMTP(okko_smtp_server, okko_smtp_server_port)
 
     smtp.login(okko_report_from, okko_smtp_passwd)
-    smtp.sendmail(okko_report_from, [ okko_report_to ], msg.as_string())
+    smtp.sendmail(okko_report_from, okko_report_to, msg.as_string())
     smtp.quit()
     
 
