@@ -904,6 +904,31 @@ def save_taxi_order(data):
     db_disconnect(db)
     pass
 
+def get_trains_list(after=None):
+    db = db_connect()
+    result = { 'trains' : [] }
+    datefmt = '%Y-%m-%d %H:%M:%S'
+    query = 'select number, start, end, inactive, added, updated from trains'
+    if after:
+        try:
+            after = after.upper().replace('T', ' ')
+            datetime.datetime.strptime(after, datefmt)
+            query += ' where updated >= "%s"'%after
+        except:
+            pass
+    res = db_query(db, query, full=True)
+    db_disconnect(db)
+    for number, start, end, inactive, added, updated in res:
+        el = {
+            'trainNumber' : number,
+            'startStation' : start,
+            'endStation' : end,
+            'state' : inactive,
+            'added' : added.strftime(datefmt),
+            'updated' : updated.strftime(datefmt)
+        }
+        result['trains'].append(el)
+    return result
 
 ######################################################
 if __name__ == '__main__':

@@ -348,6 +348,16 @@ def api_get_train():
   return json_response({ 'Train' : result })
 ######################
 
+##### /TrainsList  #####
+@app.route('/TrainsList', methods = [ 'GET' ])
+def api_trains_list():
+  # 2016-03-07T18:13:30
+  r_json = url2json(request.url)
+  result = get_trains_list(r_json.get('modifiedAfter', None))
+  return json_response(result)
+######################
+
+
 
 #####  APPLICATION  #####
 if __name__ == '__main__':
