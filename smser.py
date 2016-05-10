@@ -18,7 +18,7 @@ import json
 
 logging.basicConfig(
                     filename=settings.logs_dir + '/smser.log',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     format='%(asctime)s %(name)-20s %(levelname)-8s %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     filemode='aw'
@@ -34,10 +34,11 @@ STATUS = [ 'NOT SENT', 'SENDING', 'SENT', 'FAILED' ]
 
 #############################
 def masked(code):
-    if not code or len(code) <= 5:
-        result = '*' * len(code)
+    code_len = len(code)
+    if not code or code_len <= 5:
+        result = '*' * code_len
     else:
-        result = ('*'*(len(code) - 4)).join((code[:2], code[-2:]))
+        result = ('*'*(code_len - 4)).join((code[:2], code[-2:]))
     return result
 
 def on_new_message(message):
@@ -103,7 +104,8 @@ def on_new_message(message):
     logger.debug('Acknowleging mesaage. OrderID: {0}, Phone: {1}, Code: {2}'.format(oid, phone, masked(code)))
     message.ack()
     logger.debug('Publishing {0} message status for OrderID: {1}'.format(STATUS[state], oid))
-    publisher.publish([oid, state])
+    if oid > 0:
+        publisher.publish([oid, state])
 
 def consumer():
     while True:
