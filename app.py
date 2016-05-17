@@ -10,6 +10,7 @@ from billing import *
 from werkzeug.contrib.fixers import LighttpdCGIRootFix, HeaderRewriterFix
 from icomera_auth import auth_client
 from vidimax import check_sign, add_film_info
+from ttk import *
 
 from pprint import pprint
 import logging
@@ -348,6 +349,47 @@ def api_get_train():
   return json_response({ 'Train' : result })
 ######################
 
+##### /CheckMAC  #####
+@app.route('/CheckMAC', methods = [ 'GET' ])
+def api_check_mac():
+  r_json = url2json(request.url)
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  if not ('MAC' in r_json):
+    return json_response({}, status=400)
+  result = find_mac(r_json['MAC'])
+  return json_response({'Result':result}, status=200)
+######################
+
+##### /RegisterUser #####
+@app.route('/RegisterUser', methods = [ 'POST' ])
+def api_register_user():
+# r_json = url2json(request.url)
+  print '/RegisterUser'
+  print request
+  r_json = request.get_json()
+  print r_json
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  if not r_json or not ('MAC' in r_json and 'Phone' in r_json):
+    return json_response({}, status=400)
+  result = add_user_device(r_json['Phone'], r_json['MAC'])
+  return json_response({'Result':result}, status=200)
+######################
+
+##### /CheckCode #####
+@app.route('/CheckCode', methods = [ 'POST' ])
+def api_check_code():
+# r_json = url2json(request.url)
+  r_json = request.get_json()
+  if not user_ok(r_json):
+    return json_response({},status=401)
+  if not r_json or not ('MAC' in r_json and 'Code' in r_json):
+    return json_response({}, status=400)
+  result = check_user_code(r_json['MAC'], r_json['Code'])
+  return json_response({'Result':result}, status=200)
+######################
+
 ##### /TrainsList  #####
 @app.route('/TrainsList', methods = [ 'GET' ])
 @app.route('/trainsList', methods = [ 'GET' ])
@@ -358,7 +400,6 @@ def api_trains_list():
   result = get_trains_list(r_json.get('modifiedAfter', None))
   return json_response(result)
 ######################
-
 
 
 #####  APPLICATION  #####
