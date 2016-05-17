@@ -17,7 +17,7 @@ from icomera_auth import auth_client, deny_client
 # local imports
 import settings
 import tariffs
-from service.amqp import Publisher
+from service.sms import send_sms
 
 from pprint import pprint
 
@@ -446,8 +446,8 @@ def update_order(payment_info):
              commit=True, fetch=False)
     result = True
     if not settings.testing:
-      sms_publisher = Publisher(settings.sms_send_settings)
-      sms_publisher.publish([get_order_id(payment_info['order_id']), payment_info['phone'], code ])
+      send_sms(payment_info['phone'], code)
+      sms_sent(payment_info['order_id'])
   db_disconnect(db)
   return result
 
