@@ -906,7 +906,7 @@ def save_taxi_order(data):
 
 def get_trains_list(after=None):
     db = db_connect()
-    result = { 'trains' : [] }
+    result = { 'Trains' : [] }
     datefmt = '%Y-%m-%d %H:%M:%S'
     query = 'select number, start, end, inactive, added, updated from trains'
     if after:
@@ -920,14 +920,14 @@ def get_trains_list(after=None):
     db_disconnect(db)
     for number, start, end, inactive, added, updated in res:
         el = {
-            'trainNumber' : number,
-            'startStation' : start,
-            'endStation' : end,
-            'state' : inactive,
-            'added' : added.strftime(datefmt),
-            'updated' : updated.strftime(datefmt)
+            'TrainNumber' : number,
+            'StartStation' : start,
+            'EndStation' : end,
+            'State' : inactive,
+            'Added' : added.strftime(datefmt),
+            'Updated' : updated.strftime(datefmt)
         }
-        result['trains'].append(el)
+        result['Trains'].append(el)
     return result
 
 ######################################################

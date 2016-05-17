@@ -350,6 +350,8 @@ def api_get_train():
 
 ##### /TrainsList  #####
 @app.route('/TrainsList', methods = [ 'GET' ])
+@app.route('/trainsList', methods = [ 'GET' ])
+@app.route('/trains_list', methods = [ 'GET' ])
 def api_trains_list():
   # 2016-03-07T18:13:30
   r_json = url2json(request.url)
