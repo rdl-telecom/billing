@@ -390,6 +390,15 @@ def api_check_code():
   return json_response({'Result':result}, status=200)
 ######################
 
+##### /TrainsList  #####
+@app.route('/TrainsList', methods = [ 'GET' ])
+def api_trains_list():
+  # 2016-03-07T18:13:30
+  r_json = url2json(request.url)
+  result = get_trains_list(r_json.get('modifiedAfter', None))
+  return json_response(result)
+######################
+
 
 #####  APPLICATION  #####
 if __name__ == '__main__':
