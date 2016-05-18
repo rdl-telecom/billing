@@ -99,11 +99,14 @@ def api_old_orderid():
   film_id = r_json.get('FilmID', None)
   payment_system = r_json.get('Shop', default_shop).upper()
   direction = r_json.get('Direction', None)
+  partner = r_json.get('Partner', None)
   if direction:
 	  direction = direction.upper()
   ip = r_json.get('IPAddress', None)
+  if partner:
+      partner = partner.upper()
 
-  data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction, ip=ip)
+  data = get_first_data(code_of_service, tariff, film_id, payment_system, direction=direction, ip=ip, partner=partner)
 
   status = 200
   if data == None:
@@ -401,6 +404,28 @@ def api_trains_list():
   return json_response(result)
 ######################
 
+##### /GetStatistics  #####
+@app.route('/GetStatistics', methods = [ 'GET' ])
+@app.route('/getStatistics', methods = [ 'GET' ])
+@app.route('/get_statistics', methods = [ 'GET' ])
+def api_get_statistics():
+  # 2016-03-07+18:13:30
+  r_json = url2json(request.url)
+  result = get_stats(r_json.get('startTime', None), r_json.get('endTime', None))
+  return json_response(result)
+######################
+
+##### /GetDirection #####
+@app.route('/GetDirection', methods = [ 'GET' ])
+def api_get_direction():
+    r_json = url2json(request.url)
+    if not user_ok(r_json):
+        return json_response({},status=401)
+    if not r_json or not 'Train' in r_json:
+        return json_response({}, status=400)
+    result = get_train_direction(r_json['Train'])
+    return json_response(result)
+######################
 
 #####  APPLICATION  #####
 if __name__ == '__main__':
