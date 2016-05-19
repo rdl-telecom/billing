@@ -35,6 +35,7 @@ def url2json(url):
 def json_response(data, status=200):
     pprint(data)
     response = jsonify(data)
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
     response.status_code = status
     return response
 
@@ -969,16 +970,16 @@ def get_stats(begin, end):
     if res:
         for (oid, phone, code, price, fee, p_time, r_time) in res:
             tmp = {
-                'orderId' : oid,
-                'phone' : phone,
-                'code' : code,
-                'price' : int(price),
-                'fee' : float(fee),
-                'paymentTime' : p_time.strftime(datefmt)
+                'OrderID' : oid,
+                'Phone' : phone,
+                'Code' : code,
+                'Price' : int(price),
+                'Fee' : float(fee),
+                'PaymentTime' : p_time.strftime(datefmt)
             }
-            result['Statistics'].append(tmp)
             if r_time:
-                result['Statistics']['refundTime'] = r_time.strftime(datefmt)
+                tmp['RefundTime'] = r_time.strftime(datefmt)
+            result['Statistics'].append(tmp)
     return result
 
 def get_train_direction(train):
