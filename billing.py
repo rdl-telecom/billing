@@ -604,7 +604,7 @@ def get_code_by_billnumber(direction, ip, order, billnumber):
 def get_first_data(service, tariff, film_id=None, payment_system=None, new_model=False, direction=None, ip=None, partner=None):
     def get_partner_id(db, partner):
         result = None
-        res = db_query(db, 'select id from partners where partner="%s"'%partner)
+        res = db_query(db, 'select id from partners where name="%s"'%partner)
         if res:
             result = res[0]
         return result
@@ -621,18 +621,18 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
             if new_model:
                 update_order_id(db, film, oid)
         if direction:
-            print 'adding direction "%s" to order %s'%(direction, result)
-            db_query(db, 'update orders set direction="%s" where id=%s;'%(direction, result), fetch=False, commit=True)
+            print 'adding direction "%s" to order %s'%(direction, oid)
+            db_query(db, 'update orders set direction="%s" where id=%s;'%(direction, oid), fetch=False, commit=True)
         if partner_id:
-            print 'adding partner id = %d to order %s'%(partner_id, result)
-            db_query(db, 'update orders set partner_id=%d where id=%s;'%(partner_id, result), fetch=False, commit=True)
-        return result
+            print 'adding partner id = %d to order %s'%(partner_id, oid)
+            db_query(db, 'update orders set partner_id=%d where id=%s;'%(partner_id, oid), fetch=False, commit=True)
+        return oid
     db = db_connect()
     tariff_id, tariff_sum = get_tariff(db, service, tariff, film_id, new_model)
     shop = get_shop(payment_system)
     shop_id = get_shop_id(db, payment_system)
     if partner:
-        partner_id = get_partner_id(partner)
+        partner_id = get_partner_id(db, partner)
     if not (tariff_id and tariff_sum and shop_id):
         return None
     order_num = create_order(db, shop_id, tariff_id, film_id, direction, ip, partner_id)
