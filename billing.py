@@ -634,6 +634,8 @@ def get_first_data(service, tariff, film_id=None, payment_system=None, new_model
     shop_id = get_shop_id(db, payment_system)
     if partner:
         partner_id = get_partner_id(db, partner)
+    else:
+        partner_id = None
     if not (tariff_id and tariff_sum and shop_id):
         return None
     order_num = create_order(db, shop_id, tariff_id, film_id, direction, ip, partner_id)
